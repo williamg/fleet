@@ -1,0 +1,225 @@
+/* http://meyerweb.com/eric/tools/css/reset/
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+    padding: 10px;
+    width: calc(100% - 20px);
+    background-color: #000000;
+    color: #FFFFFF;
+    font-family: "Copperplate", "Arial", sans-serif;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+#canvas_wrapper {
+    float: left;
+    width: 100%;
+    height: calc(100% - 297px);
+}
+
+#turn {
+	width: 100px;
+	margin-left: calc(50% - 100px);
+	margin-bottom: 10px;
+	border-left: 10px solid #000;
+}
+
+#timer {
+	line-height: 33px;
+	padding: 10px;
+}
+
+#timer:before {
+	content: "Time remaining: ";
+}
+
+#hud_wrapper {
+    float: left;
+    width: 100%;
+    height: 244px;
+    padding-top: 10px;
+}
+
+#hud {
+    float: left;
+    height: 244px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+#hanger_list {
+    width: 216px;
+    height: 216px;
+    padding: 10px;
+    border: 2px solid #FFFFFF;
+    margin-right: 10px;
+}
+
+#hanger_list ul {
+    float: left;
+    width: 100%;
+    height: 140px;
+    overflow-y: scroll;
+    margin-bottom: 10px;
+}
+
+#hanger_list ul li {
+    display: block;
+    width: calc(100% - 20px);
+    float: left;
+    padding: 10px;
+}
+
+#hanger_list ul li:hover {
+    color: #0033FF;
+	background-color: rgba(255, 255, 255, 0.5);
+	cursor: pointer;
+}
+
+#hanger_list ul li.selected {
+    color: #FFF;
+    background-color: #0033FF;
+}
+
+.header {
+    float: left;
+    font-size: 19px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+button {
+    float: left;
+    background-color: #0033FF;
+    padding: 10px;
+    width: calc(100% - 20px);
+    text-align: center;
+	border: none;
+	color: #FFF;
+}
+
+button:hover {
+    cursor: pointer;
+}
+
+button:disabled {
+	background-color: #666666;
+}
+
+button:disabled:hover {
+	cursor: default;
+}
+
+#ship_info {
+    vertical-align: top;
+    width: 1000px;
+    height: 216px;
+    border: 2px solid #FFFFFF;
+    padding: 10px;
+}
+
+
+#stats {
+    float: left;
+    width: 350px;
+    height: 216px;
+}
+
+.stat {
+    float: left;
+    margin-bottom: 10px;
+    line-height: 16px;
+}
+
+.stat:before {
+    display: inline-block;
+    content: "";
+    width: 16px;
+    height: 16px;
+    background-color: #FFFFFF;
+    position: relative;
+    top: 4px;
+    margin-right: 10px;
+}
+
+.stat.ship {
+    width: 94px;
+    margin-left: calc((100% - 240px) / 3);
+}
+
+.stat.pilot {
+    width: calc(33% - 26px);
+    margin-left: calc((100% - 300px) / 4);
+	margin-bottom: 30px;
+}
+
+#pilot-name {
+    margin-top: 10px;
+}
+
+#items {
+    float: left;
+    width: 650px;
+    height: 216px;
+}
+
+.item {
+	height: 33%;
+	overflow: hidden;
+}
+
+.item p {
+	float: left;
+	display: inline-block;
+	width: calc(100% - 100px);
+	font-family: "Arial", sans-serif;
+}
+
+.item button {
+	float: left;
+	width: 100px;
+}
