@@ -11,6 +11,7 @@ import { Player, PlayerID } from "./Player"
 import { Pilot } from "./Pilot";
 import { Blaster } from "./items/Blaster";
 import { SuicideBomb } from "./items/SuicideBomb";
+import { TurnStart, TurnFinish } from "./GameObserver"
 
 /**
  * Maximum turn length in milliseconds
@@ -58,8 +59,8 @@ export function startGame(players: [Player, Player]): void {
     oship.equip(ogun, 0);
 
     /* Place on the map */
-    myship.position = new Vec2(0, 0);
-    oship.position = new Vec2(0, -1);
+    myship.deploy(new Vec2(0, 0));
+    oship.deploy(new Vec2(0, -1));
     state.grid.set(myship.position!, myship);
     state.grid.set(oship.position!, oship);
     /** END DEBUG STATE SETUP *************************************************/
@@ -100,10 +101,8 @@ export function startGame(players: [Player, Player]): void {
 
         /* Process turn on game objects */
         if (state.current_player == PlayerID.PLAYER_1) {
-            for (let [loc, ship] of state.grid.cells) {
-                if (ship == null) continue;
-                ship.processTurn();
-            }
+            TurnFinish.signal(null);
+            TurnStart.signal(null);
         }
 
         state.turn_start = Date.now();
@@ -184,7 +183,6 @@ export class GameState {
                 }
                 return this;
             case ActionType.END_TURN:
-                console.log("Ending turn");
                 this.current_player = Player.other(this.current_player);
                 return this;
         }

@@ -8,6 +8,7 @@ import { GameState } from "./Game";
 import { Action } from "./Action";
 import { PlayerID } from "./Player"
 import { TargetDescription } from "./Target"
+import { TurnFinish, TurnStart } from "./GameObserver"
 
 /**
  * Describes a particular class of ship.
@@ -63,6 +64,7 @@ export abstract class ShipItem {
     readonly name: string;         /* Name of this item                       */
     readonly description: string;  /* Description of this item                */
     cooldown_remaining: number;    /* How many turns before this item is ready*/
+    turn_finish_id: number;
 
     constructor(name: string, description: string, energy_cost: number,
                 cooldown: number) {
@@ -77,7 +79,11 @@ export abstract class ShipItem {
      * @param  {Ship}    ship Ship being equipped to
      * @return {boolean}      True if successful, false on error
      */
-    handleEquip(ship: Ship): boolean { return true; }
+    handleEquip(ship: Ship): boolean {
+        this.turn_finish_id =
+            TurnFinish.addHandler(this.processTurn.bind(this));
+        return true;
+    }
     /**
      * Process the end of a turn
      */
@@ -88,7 +94,10 @@ export abstract class ShipItem {
      * Handle this item being unequipped from the given ship
      * @param {Ship} ship Ship being unequipped from
      */
-    handleUnequip(ship: Ship): void { return; }
+    handleUnequip(ship: Ship): void {
+        TurnFinish.removeHandler(this.turn_finish_id);
+        return;
+    }
     /**
      * If a target is required to use this item, return a valid description
      * @return {TargetDescription} Description of target if required
@@ -126,6 +135,9 @@ export class Ship {
     items: (ShipItem | null)[];/* Currently equipped items      */
     health: number;            /* Current health                */
     charge: number;            /* Current charge                */
+
+    /* Handler IDs */
+    turn_finish_id: number;
 
     static P1_DEPLOY_TARGETS: Vec2[] = [
         new Vec2(-2, 3), new Vec2(0, 2), new Vec2(2, 1)
@@ -178,6 +190,10 @@ export class Ship {
         if (this.position != null) return false;
 
         this.position = dest;
+
+        /* TODO: Remove when destroyed */
+        this.turn_finish_id =
+            TurnFinish.addHandler(this.processTurn.bind(this));
         return true;
     }
     /**
@@ -230,11 +246,6 @@ export class Ship {
     processTurn(): void {
         this.charge = Math.min(this.class.max_charge,
                                this.charge + this.class.recharge);
-        for (let item of this.items) {
-            if (item == null) continue;
-
-            item.processTurn();
-        }
     }
     /**
      * Unequip the item, if any, in the given slot
