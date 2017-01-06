@@ -8,7 +8,7 @@ import { GameState } from "./Game";
 import { Action } from "./Action";
 import { PlayerID } from "./Player"
 import { TargetDescription } from "./Target"
-import { TurnFinish, TurnStart } from "./GameObserver"
+import { TurnFinish, ShipDestroyed, ShipPreDestroy } from "./GameObserver"
 
 /**
  * Describes a particular class of ship.
@@ -270,5 +270,13 @@ export class Ship {
      */
     inflictDamage(damage: number): void {
         this.health = Math.max(this.health - damage, 0);
+
+        if (this.health == 0) {
+            ShipPreDestroy.signal({ ship: this });
+            ShipDestroyed.signal({ id: this.id });
+
+            /* Unregister handlers */
+            TurnFinish.removeHandler(this.turn_finish_id);
+        }
     }
 };

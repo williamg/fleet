@@ -11,7 +11,7 @@ import { Player, PlayerID } from "./Player"
 import { Pilot } from "./Pilot";
 import { Blaster } from "./items/Blaster";
 import { SuicideBomb } from "./items/SuicideBomb";
-import { TurnStart, TurnFinish } from "./GameObserver"
+import { TurnStart, TurnFinish, ShipDestroyed } from "./GameObserver"
 
 /**
  * Maximum turn length in milliseconds
@@ -64,6 +64,20 @@ export function startGame(players: [Player, Player]): void {
     state.grid.set(myship.position!, myship);
     state.grid.set(oship.position!, oship);
     /** END DEBUG STATE SETUP *************************************************/
+
+    /* Bind event handlers */
+    const ship_destroy_handler = ShipDestroyed.addHandler(function(event) {
+        const ship_id = event.id;
+
+        /* We know the ship exists still, even though the event handler doesn't
+         * guarantee it, because it's removed here */
+         const ship = state.getShip(ship_id);
+
+         console.assert(ship != null);
+         console.assert(ship!.position! != null);
+
+         state.grid.set(ship!.position!, null);
+    })
 
     /**
      * Perform an action on behalf of a player
