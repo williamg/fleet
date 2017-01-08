@@ -9,9 +9,11 @@ import { Ship, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
 import { Action, ActionType } from "./Action"
 import { Player, PlayerID } from "./Player"
 import { Pilot } from "./Pilot";
+
+
 import { Blaster } from "./items/Blaster";
 import { SuicideBomb } from "./items/SuicideBomb";
-import { TurnStart, TurnFinish, ShipDestroyed } from "./GameObserver"
+import { EagleEye } from "./items/EagleEye";
 
 /**
  * Maximum turn length in milliseconds
@@ -39,21 +41,19 @@ export function startGame(players: [Player, Player]): void {
     /** DEBUG STATE SETUP *****************************************************/
     /* Create a ship, pilot, and gun */
     let mypilot = new Pilot("Han Solo", [2, 2, 2]);
-    let myship = new Ship("Falcon", PlayerID.PLAYER_1, Fighter, mypilot);
-    let mygun = new Blaster();
-    let sb = new SuicideBomb();
+    let myship = new Ship("Falcon", PlayerID.PLAYER_1, Fighter, mypilot, destroyShip);
 
-    myship.equip(mygun, 0);
-    myship.equip(sb, 1);
+    myship.equip(new Blaster(), 0);
+    myship.equip(new EagleEye(), 1);
 
     let pilot2 = new Pilot("Chewy", [1, 1, 3]);
-    let ship2 = new Ship("IDK", PlayerID.PLAYER_1, Vanguard, pilot2);
+    let ship2 = new Ship("IDK", PlayerID.PLAYER_1, Vanguard, pilot2, destroyShip);
 
     let [h, _] = state.hangers;
     h.push(ship2);
 
     let opilot = new Pilot("Darth Vader", [1, 3, 1]);
-    let oship = new Ship("TIE Fighter", PlayerID.PLAYER_2, Jumper, opilot);
+    let oship = new Ship("TIE Fighter", PlayerID.PLAYER_2, Jumper, opilot, destroyShip);
     let ogun = new Blaster();
 
     oship.equip(ogun, 0);
@@ -66,18 +66,11 @@ export function startGame(players: [Player, Player]): void {
     /** END DEBUG STATE SETUP *************************************************/
 
     /* Bind event handlers */
-    const ship_destroy_handler = ShipDestroyed.addHandler(function(event) {
-        const ship_id = event.id;
-
-        /* We know the ship exists still, even though the event handler doesn't
-         * guarantee it, because it's removed here */
-         const ship = state.getShip(ship_id);
-
-         console.assert(ship != null);
+    function destroyShip(ship: Ship): void{
          console.assert(ship!.position! != null);
 
          state.grid.set(ship!.position!, null);
-    })
+    }
 
     /**
      * Perform an action on behalf of a player
@@ -87,12 +80,11 @@ export function startGame(players: [Player, Player]): void {
     function makeAction(player: PlayerID, action: Action): void {
         if (state.current_player != player) return;
 
+        console.log("Player %d", player);
+        console.log("Current player: %d", state.current_player);
         state = state.do(action);
+        console.log("Current player: %d", state.current_player);
 
-        /* Report the state change to both players */
-        let [p1, p2] = state.players;
-        p1.setState(state);
-        p2.setState(state);
 
         if (gameOver(state)) {
             console.log("Game over!");
@@ -101,9 +93,12 @@ export function startGame(players: [Player, Player]): void {
 
         /* If the turn ended, start the next turn */
         if (state.current_player != player) {
-            return nextTurn();
+            nextTurn();
         }
 
+        let [p1, p2] = state.players;
+        p1.setState(state);
+        p2.setState(state);
     }
     /**
      * Advance to the next turn
@@ -114,17 +109,13 @@ export function startGame(players: [Player, Player]): void {
         }
 
         /* Process turn on game objects */
-        if (state.current_player == PlayerID.PLAYER_1) {
-            TurnFinish.signal(null);
-            TurnStart.signal(null);
+        for (let [loc, ship] of state.grid.cells) {
+            if (ship != null && ship.player != state.current_player) {
+                ship.processTurnEnd();
+            }
         }
 
         state.turn_start = Date.now();
-
-        /* Report the state change to both players */
-        let [p1, p2] = state.players;
-        p1.setState(state);
-        p2.setState(state);
 
         turn_timeout = <any>setTimeout(function() {
             makeAction(state.current_player,

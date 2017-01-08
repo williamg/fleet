@@ -4,8 +4,9 @@
 
 import { GameState } from "../Game";
 import { Player } from "../Player"
-import { Pilot, AttackResult } from "../Pilot";
-import { Ship, ShipItem } from "../Ship";
+import { Damage } from "../Damage";
+import { Ship } from "../Ship";
+import { ShipItem } from "../ShipItem"
 import { Action, ActionType } from "../Action";
 import { Vec2 } from "../Math";
 import { TargetDescription, targetInRange, targetHasPlayer } from "../Target";
@@ -70,21 +71,12 @@ const BLASTER_DESC     = `Inflicts ${BLASTER_DAMAGE} (${BLASTER_CRIT}) damage on
          if (victim == null) return true;
          if (victim.player == this.ship.player) return true;
 
-         /* There's an enemy ship in the right direction, in range */
-         const result = this.ship.pilot.attack(victim.pilot);
-         let damage = 0;
+         const damage = Damage.fromCombat(this.ship, victim, BLASTER_DAMAGE);
 
-         if (result == AttackResult.MISS) {
-             return true;
+         if (damage != null) {
+             this.ship.inflictDamage(damage);
          }
 
-         if (result == AttackResult.HIT) {
-             damage = BLASTER_DAMAGE;
-         } else {
-             damage = BLASTER_CRIT;
-         }
-
-         victim.inflictDamage(damage);
          return true;
      }
 

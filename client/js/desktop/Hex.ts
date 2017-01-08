@@ -138,8 +138,9 @@ export class Hex {
         canvas.drawPath(this.inner_hex);
 
         /* Draw health bar */
-        const health_percent = ship.health / ship.class.max_health;
-        const energy_percent = ship.charge / ship.class.max_charge;
+        const health_percent = ship.health.current / ship.health.max;
+        const energy_percent = ship.charge.current / ship.charge.max;
+        console.log("Energy percent: %d", energy_percent);
         const health_verts = this.statusArc(2, 3, 4, health_percent);
         const energy_verts = this.statusArc(1, 0, 5, energy_percent);
 

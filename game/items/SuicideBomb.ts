@@ -4,8 +4,9 @@
 
 import { GameState } from "../Game";
 import { Player } from "../Player"
-import { Pilot, AttackResult } from "../Pilot";
-import { Ship, ShipItem } from "../Ship";
+import { Damage } from "../Damage";
+import { Ship } from "../Ship";
+import { ShipItem } from "../ShipItem"
 import { Action, ActionType } from "../Action";
 import { Vec2 } from "../Math";
 
@@ -47,27 +48,25 @@ const SB_DESC      = `Inflicts ${SB_DAMAGE} damage to ALL (ally & enemy)
      /**
       * @see ShipItem.ts
       */
-     _use(target: Vec2 | null, state: GameState): boolean {
-         if (this.ship == null) return false;
-         if (this.ship.position == null) return false;
+    _use(target: Vec2 | null, state: GameState): boolean {
+        if (this.ship == null) return false;
+        if (this.ship.position == null) return false;
 
-         let neighbors = state.grid.neighbors(this.ship.position);
-         neighbors.push(this.ship.position);
+        let neighbors = state.grid.neighbors(this.ship.position);
+        neighbors.push(this.ship.position);
 
-         for (let n of neighbors) {
-             const victim = state.grid.at(n);
+        for (let n of neighbors) {
+            const victim = state.grid.at(n);
 
-             if (victim == null) continue;
+            if (victim == null) continue;
 
-             /* There's a ship in the right direction, in range */
-             const result = this.ship.pilot.attack(victim.pilot);
+            const damage = Damage.fromCombat(this.ship, victim, SB_DAMAGE);
 
-             if (result == AttackResult.MISS) continue;
+            if (damage != null) {
+                this.ship.inflictDamage(damage);
+            }
+        }
 
-             victim.inflictDamage(SB_DAMAGE);
-         }
-
-         return true;
-     }
-
- }
+        return true;
+    }
+}

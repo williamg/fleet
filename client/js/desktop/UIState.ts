@@ -6,7 +6,7 @@ import { GameState } from "../../../game/Game"
 import { Vec2 } from "../../../game/Math"
 import { PlayerID } from "../../../game/Player"
 import { Action, ActionType } from "../../../game/Action"
-import { Ship } from "../../../game/Ship"
+import { Ship  } from "../../../game/Ship"
 import { TargetDescription, targetIsOneOf, targetReachable } from "../../../game/Target"
 import { Hex } from "./Hex"
 import { HexGrid } from "../../../game/HexGrid"
@@ -21,16 +21,16 @@ type ActionCB = (action: Action) => void;
      setText("ship-name", ship.name);
      setText(
          "energy",
-         ship.charge.toString() + "/" + ship.class.max_charge.toString());
+         ship.charge.current.toString() + "/" + ship.charge.max.toString());
     setText(
         "health",
-        ship.health.toString() + "/" + ship.class.max_health.toString());
-    setText("recharge", ship.class.recharge.toString());
-    setText("move_cost", ship.class.move_cost.toString());
-    setText("pilot-name", ship.pilot.name);
-    setText("accuracy", ship.pilot.accuracy.toString());
-    setText("evasion", ship.pilot.evasion.toString());
-    setText("precision", ship.pilot.precision.toString());
+        ship.health.current.toString() + "/" + ship.health.max.toString());
+    setText("recharge", ship.recharge.value().toString());
+    setText("move_cost", ship.move_cost.value().toString());
+    setText("pilot-name", ship.pilot_name);
+    setText("accuracy", ship.accuracy.value().toString());
+    setText("evasion", ship.evasion.value().toString());
+    setText("precision", ship.precision.value().toString());
 
     /* Display items */
     for(let i = 1; i <= 3; ++i) {
@@ -223,7 +223,7 @@ export class InfoState extends UIState {
     enter(): void {
         this.move_btn.onclick = (e) => {
             const ship = this.selected!;
-            const range = Math.floor(ship.charge / ship.class.move_cost);
+            const range = Math.floor(ship.charge.current / ship.move_cost.value());
             const paction = {
                 type: ActionType.MOVE,
                 source: ship.id,
@@ -334,12 +334,12 @@ export class InfoState extends UIState {
         }
 
         this.move_btn.disabled = !(actions_enabled &&
-                                   ship!.charge >= ship!.class.move_cost)
+                                   ship!.charge.current >= ship!.move_cost.value())
 
         for (let i = 0; i < this.item_btns.length; ++i) {
             let btn = this.item_btns[i];
             btn.disabled = !(actions_enabled && ship!.items[i] != null &&
-                             ship!.charge >= ship!.items[i]!.energy_cost &&
+                             ship!.charge.current >= ship!.items[i]!.energy_cost &&
                              ship!.items[i]!.cooldown_remaining == 0);
         }
     }

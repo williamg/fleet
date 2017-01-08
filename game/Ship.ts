@@ -3,12 +3,16 @@
  */
 
 import { Vec2, hexDist } from "./Math";
-import { Pilot } from "./Pilot";
+import { Pilot } from "./Pilot"
+import { Attribute } from "./Attribute"
+import { Damage, DamageResult } from "./Damage"
+import { Resource } from "./Resource"
 import { GameState } from "./Game";
 import { Action } from "./Action";
 import { PlayerID } from "./Player"
+import { ShipItem } from "./ShipItem"
+import { StatusEffect, EffectManager } from "./StatusEffect"
 import { TargetDescription } from "./Target"
-import { TurnFinish, ShipDestroyed, ShipPreDestroy } from "./GameObserver"
 
 /**
  * Describes a particular class of ship.
@@ -46,118 +50,61 @@ export const Vanguard: ShipClass = {
     move_cost: 50,
     num_slots: 3
 };
-
-/**
- * An item that can go in one of a ship's slots. An item performs 2 crucial
- * tasks:
- *  - Describe the type of arguments a valid action using this item needs to
- *    have (this is only used on the UI side)
- *  - Given a valid action, modify the state after having performed that action
- */
-export abstract class ShipItem {
-    readonly energy_cost: number;  /* How much charge this item uses          */
-    readonly cooldown: number;     /* How many turns must pass before this item
-                                    * can be used again. Setting this to 0
-                                    * allows an item to be used multiple times
-                                    * in a single turn
-                                    */
-    readonly name: string;         /* Name of this item                       */
-    readonly description: string;  /* Description of this item                */
-    cooldown_remaining: number;    /* How many turns before this item is ready*/
-    turn_finish_id: number;
-
-    constructor(name: string, description: string, energy_cost: number,
-                cooldown: number) {
-        this.name = name;
-        this.description = description;
-        this.energy_cost = energy_cost;
-        this.cooldown = cooldown;
-        this.cooldown_remaining = 0;
-    }
-    /**
-     * Handle this item being equipped with the given ship
-     * @param  {Ship}    ship Ship being equipped to
-     * @return {boolean}      True if successful, false on error
-     */
-    handleEquip(ship: Ship): boolean {
-        this.turn_finish_id =
-            TurnFinish.addHandler(this.processTurn.bind(this));
-        return true;
-    }
-    /**
-     * Process the end of a turn
-     */
-    processTurn(): void {
-        this.cooldown_remaining = Math.max(0, this.cooldown_remaining - 1);
-    }
-    /**
-     * Handle this item being unequipped from the given ship
-     * @param {Ship} ship Ship being unequipped from
-     */
-    handleUnequip(ship: Ship): void {
-        TurnFinish.removeHandler(this.turn_finish_id);
-        return;
-    }
-    /**
-     * If a target is required to use this item, return a valid description
-     * @return {TargetDescription} Description of target if required
-     */
-    targetRequired(): TargetDescription | null { return null; }
-    /**
-     * Use this item, modifying the state
-     * @param  {Action}    action Action to perform. Will be of type ACTIVATE.
-     * @param  {GameState} state  Current game state
-     * @return {boolean}          True on success, false on error
-     */
-    use(target: Vec2 | null, state: GameState): boolean {
-        if (this._use(target, state)) {
-            this.cooldown_remaining = this.cooldown;
-            return true;
-        }
-
-        return false;
-    }
-    /**
-     * Subclass implementation to use the item
-     */
-    abstract _use(target: Vec2 | null, state: GameState): boolean;
-};
 /**
  * Represents a single ship on the map (or destroyed, or not yet deployed)
  */
 export class Ship {
-    readonly name: string;     /* Name of the vessel            */
-    readonly class: ShipClass; /* Ship class                    */
-    readonly player: PlayerID; /* ID of owning player           */
-    readonly id: number;       /* ID of this ship               */
-    pilot: Pilot;              /* Pilot of this ship            */
-    position: Vec2 | null;     /* Position if deployed          */
-    items: (ShipItem | null)[];/* Currently equipped items      */
-    health: number;            /* Current health                */
-    charge: number;            /* Current charge                */
-
-    /* Handler IDs */
-    turn_finish_id: number;
-
     static P1_DEPLOY_TARGETS: Vec2[] = [
         new Vec2(-2, 3), new Vec2(0, 2), new Vec2(2, 1)
     ];
     static P2_DEPLOY_TARGETS: Vec2[] = [
         new Vec2(-2, -1), new Vec2(0, -2), new Vec2(2, -3)
     ];
+
     private static max_id = 0;
 
+    /* Ship info */
+    readonly name: string;                             /* Name of the vessel  */
+    readonly class: ShipClass;                         /* Ship class          */
+    readonly player: PlayerID;                         /* ID of owning player */
+    readonly id: number;                               /* ID of this ship     */
+    readonly pilot_name: string;                       /* Pilot name          */
+    private readonly on_destroy: (ship: Ship) => void; /* Destroy callback    */
+
+    /* Ship state */
+    position: Vec2 | null;                     /* Position if deployed*/
+    readonly items: (ShipItem | null)[];       /* Equipped items      */
+    readonly health: Resource;
+    readonly charge: Resource;
+    readonly effectManager: EffectManager;
+    readonly recharge: Attribute;
+    readonly move_cost: Attribute;
+    readonly accuracy: Attribute;
+    readonly precision: Attribute;
+    readonly evasion: Attribute;
+
     constructor(name: string, player: PlayerID, ship_class: ShipClass,
-                pilot: Pilot) {
+                pilot: Pilot, on_destroy: (ship: Ship) => void) {
         this.name = name;
         this.player = player;
         this.class = ship_class;
         this.id = Ship.max_id++;
-        this.pilot = pilot;
+        this.pilot_name = pilot.name;
+        this.on_destroy = on_destroy;
+
         this.position = null;
         this.items = new Array(this.class.num_slots);
-        this.charge = this.class.max_charge;
-        this.health = this.class.max_health;
+        this.health = new Resource(0, this.class.max_health,
+                                   this.class.max_health);
+        this.charge = new Resource(0, this.class.max_charge,
+                                   this.class.max_charge);
+        this.effectManager = new EffectManager(this);
+        this.recharge =
+            new Attribute(0, this.class.max_charge, this.class.recharge);
+        this.move_cost = new Attribute(0, Infinity, this.class.move_cost);
+        this.accuracy = new Attribute(0, Infinity, pilot.accuracy);
+        this.precision = new Attribute(0, Infinity, pilot.precision);
+        this.evasion = new Attribute(0, Infinity, pilot.evasion);
 
         for (let i = 0; i < this.items.length; ++i) {
             this.items[i] = null;
@@ -171,14 +118,15 @@ export class Ship {
     move(dest: Vec2): boolean {
         if (this.position == null) return false;
 
-        const range = Math.floor(this.charge / this.class.move_cost);
+        const move_cost = this.move_cost.value();
+        const range = Math.floor(this.charge.current / move_cost);
         const dist = hexDist(this.position, dest);
 
         if (dist > range)  return false;
 
         /* TODO: Ensure dest is actually reachable from current position */
         this.position = dest;
-        this.charge -= (dist * this.class.move_cost);
+        this.charge.increment(-dist * move_cost);
         return true;
     }
     /**
@@ -190,11 +138,13 @@ export class Ship {
         if (this.position != null) return false;
 
         this.position = dest;
-
-        /* TODO: Remove when destroyed */
-        this.turn_finish_id =
-            TurnFinish.addHandler(this.processTurn.bind(this));
         return true;
+    }
+    /**
+     * Apply an effect to this ship
+     */
+    applyEffect(effect: StatusEffect): void {
+        this.effectManager.apply(effect);
     }
     /**
      * Equip an item onto this ship
@@ -232,10 +182,10 @@ export class Ship {
 
         const item = this.items[slot]!;
 
-        if (item.energy_cost > this.charge) return false;
+        if (item.energy_cost > this.charge.current) return false;
 
         if (item.use(target, state)) {
-            this.charge -= item.energy_cost;
+            this.charge.increment(-item.energy_cost);
         }
 
         return true;
@@ -243,9 +193,15 @@ export class Ship {
     /**
      * Process the ending of a turn
      */
-    processTurn(): void {
-        this.charge = Math.min(this.class.max_charge,
-                               this.charge + this.class.recharge);
+    processTurnEnd(): void {
+        this.charge.increment(this.recharge.value());
+        this.effectManager.processTurnEnd();
+
+        for (let item of this.items) {
+            if (item != null) {
+                item.processTurnEnd();
+            }
+        }
     }
     /**
      * Unequip the item, if any, in the given slot
@@ -265,18 +221,26 @@ export class Ship {
         return equipped;
     }
     /**
-     * Inflict some damage on this ship
+     * Inflict some damage on another ship
      * @param {number} damage Amount of damage to do
      */
-    inflictDamage(damage: number): void {
-        this.health = Math.max(this.health - damage, 0);
+    inflictDamage(damage: Damage): void {
+        this.effectManager.modifyInflictDamage(damage);
 
-        if (this.health == 0) {
-            ShipPreDestroy.signal({ ship: this });
-            ShipDestroyed.signal({ id: this.id });
+        damage.target.receiveDamage(damage);
+    }
+    /**
+     * Receive incoming damage
+     * @param {Damage} damage Damage received
+     */
+    receiveDamage(damage: Damage): void {
+        this.effectManager.modifyReceiveDamage(damage);
 
-            /* Unregister handlers */
-            TurnFinish.removeHandler(this.turn_finish_id);
+        this.health.increment(-damage.amount);
+
+        if (this.health.current == 0) {
+            this.on_destroy(this);
         }
+
     }
 };
