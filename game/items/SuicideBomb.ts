@@ -9,6 +9,7 @@ import { Ship } from "../Ship";
 import { ShipItem } from "../ShipItem"
 import { Action, ActionType } from "../Action";
 import { Vec2 } from "../Math";
+import { EntityType } from "../GridEntity"
 
 const SB_COOLDOWN  = 1;
 const SB_COST      = 25;
@@ -58,9 +59,9 @@ const SB_DESC      = `Inflicts ${SB_DAMAGE} damage to ALL (ally & enemy)
         for (let n of neighbors) {
             const victim = state.grid.at(n);
 
-            if (victim == null) continue;
+            if (victim == null || victim.type != EntityType.SHIP) continue;
 
-            const damage = Damage.fromCombat(this.ship, victim, SB_DAMAGE);
+            const damage = Damage.fromCombat(this.ship, victim as Ship, SB_DAMAGE);
 
             if (damage != null) {
                 this.ship.inflictDamage(damage);

@@ -5,66 +5,22 @@ import { Canvas } from "../Canvas"
 import { GameState } from "../../../game/Game"
 import { Vec2 } from "../../../game/Math"
 import { PlayerID } from "../../../game/Player"
-import { Action, ActionType } from "../../../game/Action"
-import { Ship  } from "../../../game/Ship"
-import { TargetDescription, targetIsOneOf, targetReachable } from "../../../game/Target"
+import { Move, Deploy, EndTurn, Activate, Action, ActionType } from "../../../game/Action"
+import { Ship, ShipInfo } from "../../../game/Ship"
+import { ShipItem } from "../../../game/ShipItem"
+import { TargetDescription, targetIsOneOf, targetReachable, targetIsDeployable } from "../../../game/Target"
 import { Hex } from "./Hex"
 import { HexGrid } from "../../../game/HexGrid"
+import { GridEntity, EntityID, EntityType } from "../../../game/GridEntity"
 
-type ActionCB = (action: Action) => void;
-
- function showInfo(ship: Ship) {
-     function setText(id: string, text: string) {
-         document.getElementById(id)!.innerHTML = text;
-     }
-
-     setText("ship-name", ship.name);
-     setText(
-         "energy",
-         ship.charge.current.toString() + "/" + ship.charge.max.toString());
-    setText(
-        "health",
-        ship.health.current.toString() + "/" + ship.health.max.toString());
-    setText("recharge", ship.recharge.value().toString());
-    setText("move_cost", ship.move_cost.value().toString());
-    setText("pilot-name", ship.pilot_name);
-    setText("accuracy", ship.accuracy.value().toString());
-    setText("evasion", ship.evasion.value().toString());
-    setText("precision", ship.precision.value().toString());
-
-    /* Display items */
-    for(let i = 1; i <= 3; ++i) {
-        const string = "item" + (i - 1).toString();
-        let name = "";
-        let desc = "";
-        let btn = "";
-
-        if (ship.class.num_slots < i) {
-            /* Item slot isn't available */
-            name = "(Unavailable)";
-            desc = "N/A";
-            btn = "N/A";
-        } else if (ship.items[i-1] == null) {
-            /* Item slot isn't used */
-            name = "(Empty)";
-            desc = "N/A";
-            btn = "N/A";
-        } else {
-            name = ship.items[i-1]!.name;
-            desc = ship.items[i-1]!.description;
-
-            if (ship.items[i-1]!.cooldown_remaining > 0) {
-                btn = ship.items[i-1]!.cooldown_remaining.toString();
-            } else {
-                btn = `Use (${ship.items[i-1]!.energy_cost})`;
-            }
-        }
-
-        setText(string + "-name", name);
-        setText(string + "-description", desc);
-        setText(string, btn);
-    }
- }
+export interface UICallbacks {
+    report_action: (action: Action) => void;
+    set_ship_selected: (ship: Ship) => void;
+    set_hanger_selected: (index: number) => void;
+    transition: (state: UIState) => void;
+    get_selected_ship: () => Ship | null;
+    get_selected_hanger_ship: () => number | null;
+};
 
 /**
  * The UI is managed with an FSM model. In general, the user will transition
@@ -87,18 +43,16 @@ export abstract class UIState {
     protected readonly deploy_btn: HTMLButtonElement;
     protected readonly item_btns: HTMLButtonElement[];
     protected readonly turn_btn: HTMLButtonElement;
-    protected readonly report_action: ActionCB;
-    protected readonly transition: TransitionFn;
+    protected readonly callbacks: UICallbacks;
     protected uigrid: HexGrid<Hex>;
     protected state: GameState;
 
-    constructor(friendly: PlayerID, state: GameState, report_action: ActionCB,
-                uigrid: HexGrid<Hex>, transition: TransitionFn) {
+    constructor(friendly: PlayerID, state: GameState, uigrid: HexGrid<Hex>,
+                callbacks: UICallbacks) {
         this.friendly = friendly;
         this.state = state;
-        this.report_action = report_action;
         this.uigrid = uigrid;
-        this.transition = transition;
+        this.callbacks = callbacks;
         this.move_btn = document.getElementById("move")! as HTMLButtonElement;
         this.deploy_btn =
             document.getElementById("deploy")! as HTMLButtonElement;
@@ -118,19 +72,14 @@ export abstract class UIState {
         this.state = state;
     };
     hexClicked(hex: Vec2): void { return; }
-    hangerShipClicked(ship: Ship): void { return; }
+    hangerShipClicked(index: number): void { return; }
     render(canvas: Canvas): void { return; }
 }
 
 export class OpponentState extends UIState {
-    private selected: Ship | null;
-
-    constructor(friendly: PlayerID, state: GameState, report_action: ActionCB,
-                uigrid: HexGrid<Hex>, transition: TransitionFn,
-                selected: Ship | null) {
-        super(friendly, state, report_action, uigrid, transition);
-
-        this.selected = selected;
+    constructor(friendly: PlayerID, state: GameState, uigrid: HexGrid<Hex>,
+                callbacks: UICallbacks) {
+        super(friendly, state, uigrid, callbacks);
     }
 
     /**
@@ -158,137 +107,99 @@ export class OpponentState extends UIState {
      * @param  {Vec2}      hex   Hex to display
      */
     hexClicked(hex: Vec2): void {
-        const ship = this.state.grid.at(hex);
+        const entity = this.state.grid.at(hex);
 
-        if (ship == null) return;
+        if (entity == null || entity.type != EntityType.SHIP) return;
 
-        this.setSelected(ship);
+        this.callbacks.set_ship_selected(entity as Ship);
     }
-    hangerShipClicked(ship: Ship): void {
-        this.setSelected(ship);
+    /**
+     * Display info for the selected hanger ship
+     * @param {number} index Index of the hanger ship
+     */
+    hangerShipClicked(index: number): void {
+        this.callbacks.set_hanger_selected(index);
     }
-
     /**
      * Transition to the info state when it is no longer the opponent's turn
      */
     setState(state: GameState): void {
         super.setState(state);
 
-        if (this.selected != null) {
-            showInfo(this.selected);
-        }
-
         if (this.state.current_player == this.friendly) {
-            this.transition(new InfoState(this.friendly, this.state,
-                                          this.report_action, this.uigrid,
-                                          this.transition, this.selected));
-        }
-    }
-
-    private setSelected(ship: Ship) {
-        if (this.selected != null) {
-            if (this.selected.position != null) {
-                this.uigrid.at(this.selected.position)!.setRenderStyle("normal");
-            } else {
-                document.getElementById("ship" + this.selected.id.toString())!
-                        .classList.remove("selected");
-            }
-        }
-
-        showInfo(ship!);
-        this.selected = ship;
-
-        if (this.selected.position != null) {
-            this.uigrid.at(this.selected.position)!.setRenderStyle("selected");
-        } else {
-            document.getElementById("ship" + this.selected.id.toString())!
-                    .classList.add("selected");
+            this.callbacks.transition(
+                new InfoState(this.friendly, this.state,
+                              this.uigrid, this.callbacks));
         }
     }
 }
 
 export class InfoState extends UIState {
-    private selected: Ship | null;
-    constructor(friendly: PlayerID, state: GameState, report_action: ActionCB,
-                uigrid: HexGrid<Hex>, transition: TransitionFn,
-                selected: Ship | null) {
-        super(friendly, state, report_action, uigrid, transition);
-
-        this.selected = selected;
+    constructor(friendly: PlayerID, state: GameState, uigrid: HexGrid<Hex>,
+                callbacks: UICallbacks) {
+        super(friendly, state, uigrid, callbacks);
     }
-
     /**
      * Enable action buttons if a ship is selected
      */
     enter(): void {
         this.move_btn.onclick = (e) => {
-            const ship = this.selected!;
+            const ship = this.callbacks.get_selected_ship()!;
             const range = Math.floor(ship.charge.current / ship.move_cost.value());
-            const paction = {
-                type: ActionType.MOVE,
-                source: ship.id,
-                slot: null,
-                desc: new TargetDescription([
-                    targetReachable(range)
-                ])
-            };
+            const desc = new TargetDescription([
+                targetReachable(ship.position, range)
+            ]);
 
-            this.transition(new TargetingState(this.friendly, this.state,
-                                               this.report_action, this.uigrid,
-                                               this.transition, this.move_btn,
-                                               paction));
+            function make_move(dest: Vec2) {
+                this.callbacks.report_action(new Move(ship.id, dest));
+            }
+
+            this.callbacks.transition(new TargetingState(this.friendly, this.state,
+                                               this.uigrid, this.callbacks,
+                                               this.move_btn, desc, make_move));
         }
 
         for (let i = 0; i < this.item_btns.length; ++i) {
             let btn = this.item_btns[i];
             btn.onclick = (e) => {
-                const ship = this.selected!;
+                const ship = this.callbacks.get_selected_ship()!;
                 const desc = ship.items[i]!.targetRequired();
 
                 if (desc == null) {
                     /* No target required, perform action */
-                    this.report_action(
-                        new Action(ActionType.ACTIVATE, ship.id, i, null));
-                } else {
-                    const paction = {
-                        type: ActionType.ACTIVATE,
-                        source: ship.id,
-                        slot: 0,
-                        desc: desc!
-                    };
-
-                    this.transition(new TargetingState(this.friendly, this.state,
-                                                       this.report_action, this.uigrid,
-                                                       this.transition, btn,
-                                                       paction));
+                    this.callbacks.report_action(new Activate(ship.id, i, null));
+                    return;
                 }
+
+                function use_item(target: Vec2) {
+                    this.callbacks.report_action(new Activate(ship.id, i, target));
+                }
+
+                this.callbacks.transition(
+                    new TargetingState(this.friendly, this.state, this.uigrid,
+                                       this.callbacks, btn, desc, use_item));
             }
         }
 
         this.turn_btn.onclick = (e) => {
-            const action = new Action(ActionType.END_TURN, null, null, null);
-            this.report_action(action);
+            this.callbacks.report_action(new EndTurn());
         }
 
         this.deploy_btn.onclick = (e) => {
-            let deploy_targets = Ship.P1_DEPLOY_TARGETS;
+            const idx = this.callbacks.get_selected_hanger_ship()!;
+            const desc = new TargetDescription([
+                targetIsDeployable(this.friendly)
+            ]);
 
-            if (this.friendly == PlayerID.PLAYER_2)
-                deploy_targets = Ship.P2_DEPLOY_TARGETS;
+            function deploy(dest: Vec2) {
+                this.callbacks.report_action(new Deploy(idx, dest));
+                this.callbacks.set_ship_selected(this.state.grid.at(dest)! as Ship);
+            }
 
-            const paction = {
-                type: ActionType.DEPLOY,
-                source: this.selected!.id,
-                slot: 0,
-                desc: new TargetDescription([
-                    targetIsOneOf(deploy_targets)
-                ])
-            };
-
-            this.transition(new TargetingState(this.friendly, this.state,
-                                               this.report_action, this.uigrid,
-                                               this.transition, this.deploy_btn,
-                                               paction));
+            this.callbacks.transition(
+                new TargetingState(this.friendly, this.state, this.uigrid,
+                                   this.callbacks, this.deploy_btn, desc,
+                                   deploy));
         }
     }
 
@@ -297,14 +208,14 @@ export class InfoState extends UIState {
      * @param  {Vec2}    hex Hex that was clicked
      */
     hexClicked(hex: Vec2): void {
-        const ship = this.state.grid.at(hex);
+        const entity = this.state.grid.at(hex);
 
-        if (ship == null) return;
+        if (entity == null || entity.type != EntityType.SHIP) return;
 
-        this.setSelected(ship);
+        this.callbacks.set_ship_selected(entity as Ship);
     }
-    hangerShipClicked(ship: Ship): void {
-        this.setSelected(ship);
+    hangerShipClicked(index: number): void {
+        this.callbacks.set_hanger_selected(index);
     }
 
     /**
@@ -314,27 +225,24 @@ export class InfoState extends UIState {
     setState(state: GameState): void {
         super.setState(state);
 
-        if (this.selected != null) {
-            showInfo(this.selected);
-        }
-
         if (this.state.current_player != this.friendly) {
-            this.transition(new OpponentState(this.friendly, this.state,
-                                              this.report_action, this.uigrid,
-                                              this.transition, this.selected));
+            this.callbacks.transition(
+                new OpponentState(this.friendly, this.state,
+                                  this.uigrid, this.callbacks));
         }
     }
 
     render(canvas: Canvas): void {
         let actions_enabled = false;
-        let ship = this.selected;
+        let ship = this.callbacks.get_selected_ship();
 
         if (ship != null && ship.player == this.friendly) {
-                actions_enabled = ship.position != null;
+                actions_enabled = true;
         }
 
         this.move_btn.disabled = !(actions_enabled &&
-                                   ship!.charge.current >= ship!.move_cost.value())
+                                   ship!.charge.current >= ship!.move_cost.value());
+        this.deploy_btn.disabled = this.callbacks.get_selected_hanger_ship() == null;
 
         for (let i = 0; i < this.item_btns.length; ++i) {
             let btn = this.item_btns[i];
@@ -343,51 +251,23 @@ export class InfoState extends UIState {
                              ship!.items[i]!.cooldown_remaining == 0);
         }
     }
-
-    private setSelected(ship: Ship) {
-        if (this.selected != null) {
-            if (this.selected.position != null) {
-                this.uigrid.at(this.selected.position)!.setRenderStyle("normal");
-            } else {
-                document.getElementById("ship" + this.selected.id.toString())!
-                        .classList.remove("selected");
-            }
-        }
-
-        showInfo(ship!);
-        this.selected = ship;
-
-        if (this.selected.position != null) {
-            this.uigrid.at(this.selected.position)!.setRenderStyle("selected");
-            this.deploy_btn.disabled = true;
-        } else {
-            document.getElementById("ship" + this.selected.id.toString())!
-                    .classList.add("selected");
-            this.deploy_btn.disabled = false;
-        }
-    }
 }
-
-interface PartialAction {
-    type: ActionType;
-    source: number;
-    slot: number | null;
-    desc: TargetDescription;
-};
 
 export class TargetingState extends UIState {
     private button_text: string;
     private button: HTMLButtonElement;
-    private paction: PartialAction;
+    private desc: TargetDescription;
+    private target_cb: (target: Vec2) => void;
 
-    constructor(friendly: PlayerID, state: GameState, report_action: ActionCB,
-                uigrid: HexGrid<Hex>, transition: TransitionFn,
-                button: HTMLButtonElement, paction: PartialAction) {
-        super(friendly, state, report_action, uigrid, transition);
+    constructor(friendly: PlayerID, state: GameState, uigrid: HexGrid<Hex>,
+                callbacks: UICallbacks, button: HTMLButtonElement,
+                desc: TargetDescription, target_cb: (target: Vec2) => void) {
+        super(friendly, state, uigrid, callbacks);
 
         this.button = button;
         this.button_text = button.innerHTML;
-        this.paction = paction;
+        this.desc = desc;
+        this.target_cb = target_cb;
     }
     /**
      * Setup move button to cancel
@@ -397,20 +277,17 @@ export class TargetingState extends UIState {
         this.button.innerHTML = "Cancel";
 
         this.button.onclick = (e) => {
-            this.transition(new InfoState(this.friendly, this.state,
-                                          this.report_action, this.uigrid,
-                                          this.transition,
-                                          this.state.getShip(this.paction.source)));
+            this.callbacks.transition(new InfoState(this.friendly, this.state,
+                                                    this.uigrid, this.callbacks));
         }
 
         this.turn_btn.onclick = (e) => {
-            const action = new Action(ActionType.END_TURN, null, null, null);
-            this.report_action(action);
+            this.callbacks.report_action(new EndTurn());
         }
 
         /* Highlight valid target */
         for (let [loc, ship] of this.state.grid.cells) {
-            if (this.paction.desc.matches(this.paction.source, loc, this.state))
+            if (this.desc.matches(loc, this.state))
                 this.uigrid.at(loc)!.setRenderStyle("target");
         }
     }
@@ -422,9 +299,6 @@ export class TargetingState extends UIState {
         for (let [loc, ship] of this.state.grid.cells) {
             this.uigrid.at(loc)!.setRenderStyle("normal");
         }
-
-        let ship = this.state.getShip(this.paction.source);
-        this.uigrid.at(ship!.position!)!.setRenderStyle("selected");
     }
     /**
      * Handle a hex being clicked. Either produces an action and transitions to
@@ -432,13 +306,11 @@ export class TargetingState extends UIState {
      * @param  {Vec2}           hex     Hex clicked
      */
     hexClicked(hex: Vec2): void {
-        if (this.paction.desc.matches(this.paction.source, hex, this.state)) {
-            this.report_action(new Action(this.paction.type,
-                                          this.paction.source, this.paction.slot,
-                                          hex));
-            this.transition(new InfoState(this.friendly, this.state, this.report_action,
-                                 this.uigrid, this.transition,
-                                 this.state.getShip(this.paction.source)));
+        if (this.desc.matches(hex, this.state)) {
+            this.target_cb(hex);
+            this.callbacks.transition(
+                new InfoState(this.friendly, this.state, this.uigrid,
+                              this.callbacks));
         } else {
             console.log("Invalid target");
         }
@@ -447,13 +319,10 @@ export class TargetingState extends UIState {
     setState(state: GameState): void {
         super.setState(state);
 
-        let ship = this.state.getShip(this.paction.source);
-        showInfo(ship!);
-
         if (this.state.current_player != this.friendly) {
-            this.transition(new OpponentState(this.friendly, this.state,
-                                     this.report_action, this.uigrid, this.transition,
-                                     this.state.getShip(this.paction.source)));
+            this.callbacks.transition(
+                new OpponentState(this.friendly, this.state, this.uigrid,
+                                  this.callbacks));
         }
     }
 }

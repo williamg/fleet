@@ -2,21 +2,25 @@
  * @file Pilot.ts
  */
 
+import { Attribute } from "./Attribute"
+
 /**
  * Every ship needs a pilot. Pilots control the
  * - Hit chance (accuracy)
- * - Dodge chance (evasion)
  * - Crit chance (precision)
+ * - Dodge chance (evasion)
  * of a ship
  */
 export class Pilot {
-    readonly name: string;      /* Name of the pilot              */
-    readonly accuracy: number;  /* Controls hit chance            */
-    readonly evasion: number;   /* Controls dodge chance          */
-    readonly precision: number; /* Controls precision             */
+    readonly name: string;         /* Name of the pilot              */
+    readonly accuracy: Attribute;  /* Controls hit chance            */
+    readonly precision: Attribute; /* Controls precision             */
+    readonly evasion: Attribute;   /* Controls dodge chance          */
 
-    constructor(name: string, stats: [number, number, number]) {
+    constructor(name: string, [acc, pre, eva]: [number, number, number]) {
         this.name = name;
-        [this.accuracy, this.evasion, this.precision] = stats;
+        this.accuracy = new Attribute(0, Infinity, acc);
+        this.precision = new Attribute(0, Infinity, pre);
+        this.evasion = new Attribute(0, Infinity, eva);
     }
 };

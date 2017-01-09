@@ -6,9 +6,10 @@ import { Vec2, hexDist } from "./Math"
 import { hex_round } from "./HexGrid"
 import { GameState } from "./Game"
 import { PlayerID } from "./Player"
+import { Ship } from "./Ship"
+import { DeployPad } from "./DeployPad"
 
-export type TargetConstraint =
-    (source: number, target: Vec2, state: GameState) => boolean
+export type TargetConstraint = (target: Vec2, state: GameState) => boolean
 
 /**
  * When an ability takes a target, they provide an object of this type to be
@@ -23,14 +24,13 @@ export class TargetDescription {
     }
     /**
      * Determine if the given source, target, and state match this description
-     * @param  {number}    source ID of source ship
      * @param  {Vec2}      target Target location
      * @param  {GameState} state  State of the game
      * @return {boolean}          Whether or not the target matches
      */
-    matches(source: number, target: Vec2, state: GameState): boolean {
+    matches(target: Vec2, state: GameState): boolean {
         for (let constraint of this.constraints) {
-            if (!constraint(source, target, state)) return false;
+            if (!constraint(target, state)) return false;
         }
 
         return true;
@@ -39,16 +39,18 @@ export class TargetDescription {
 /**
  * Constructs a TargetConstraint for checking if the target is reachable from
  * the source
+ * @param  {Vec2}             start     Starting location
  * @param  {number}           max_moves Maximum number of moves allowed
  * @return {TargetConstraint}           Target constraint
  */
-export function targetReachable(max_moves: number): TargetConstraint {
+export function targetReachable(start: Vec2, max_moves: number):
+    TargetConstraint {
     /* Note: Will return false if the target has a ship on it, even if the path
      * to that hex is free.
      */
-    function isReachable(source: number, target: Vec2, state: GameState):
+    function isReachable(target: Vec2, state: GameState):
         boolean {
-        let visited: Vec2[] = [ state.getShip(source)!.position! ];
+        let visited: Vec2[] = [ start ];
         let fringes: (Vec2[])[] = [];
         fringes.push(visited);
 
@@ -80,18 +82,15 @@ export function targetReachable(max_moves: number): TargetConstraint {
 /**
  * Constructs a TargetConstraint that matches targets within a certain distance
  * of the source
+ * @param  {Vec2}             origin    Origin/center
  * @param  {number}           max_range Maximum range
  * @return {TargetConstraint}           Target constraint
  */
-export function targetInRange(max_range: number): TargetConstraint {
-    function isInRange(source: number, target: Vec2, state: GameState):
+export function targetInRange(origin: Vec2, max_range: number):
+    TargetConstraint {
+    function isInRange(target: Vec2, state: GameState):
         boolean {
-        const ship = state.getShip(source);
-
-        if (ship == null) return false;
-        if (ship.position == null) return false;
-
-        return hexDist(ship.position, target) <= max_range;
+        return hexDist(origin, target) <= max_range;
     }
 
     return isInRange;
@@ -103,13 +102,13 @@ export function targetInRange(max_range: number): TargetConstraint {
  * @return {TargetConstraint}        Target constraint
  */
 export function targetHasPlayer(player: PlayerID): TargetConstraint {
-    function hasPlayer(source: number, target: Vec2, state: GameState):
+    function hasPlayer(target: Vec2, state: GameState):
         boolean {
-        const ship = state.grid.at(target);
+        const entity = state.grid.at(target);
 
-        if (ship == null) return false;
+        if (entity == null) return false;
 
-        return ship.player == player;
+        return entity.player == player;
     }
 
     return hasPlayer;
@@ -121,15 +120,38 @@ export function targetHasPlayer(player: PlayerID): TargetConstraint {
  * @return {TargetConstraint}         Target constraint
  */
 export function targetIsOneOf(options: Vec2[]): TargetConstraint {
-        function isOneOf(source: number, target: Vec2, state: GameState):
-            boolean {
-
-            for (let option of options) {
-                if (target.equals(option)) return true;
-            }
-
-            return false;
+    function isOneOf(target: Vec2, state: GameState): boolean {
+        for (let option of options) {
+            if (target.equals(option)) return true;
         }
 
-        return isOneOf;
+        return false;
+    }
+
+    return isOneOf;
+}
+/**
+ * Constructs a TargetConstraint that matches valid deploy targets for the
+ * given player
+ */
+export function targetIsDeployable(player: PlayerID): TargetConstraint {
+    let deployPads = DeployPad.P1_TARGETS;
+    if (player == PlayerID.PLAYER_2) deployPads = DeployPad.P2_TARGETS;
+
+    function isDeployable(target: Vec2, state: GameState): boolean {
+        if (state.grid.at(target) != null) return false;
+
+        deployPads = deployPads.filter(function(loc) {
+                return (state.grid.at(loc)! as DeployPad).charge.current >=
+                       DeployPad.CHARGE_REQUIRED;
+        });
+
+        for (let dp of deployPads) {
+            if (hexDist(dp, target) <= 1) return true;
+        }
+
+        return false;
+    }
+
+    return isDeployable;
 }

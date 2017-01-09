@@ -9,6 +9,7 @@ import { Ship } from "../Ship";
 import { ShipItem } from "../ShipItem"
 import { Action, ActionType } from "../Action";
 import { Vec2 } from "../Math";
+import { EntityType } from "../GridEntity"
 import { TargetDescription, targetInRange, targetHasPlayer } from "../Target";
 
 const BLASTER_COOLDOWN = 0;
@@ -52,7 +53,7 @@ const BLASTER_DESC     = `Inflicts ${BLASTER_DAMAGE} (${BLASTER_CRIT}) damage on
       */
      targetRequired(): TargetDescription | null {
         return new TargetDescription([
-            targetInRange(BLASTER_RANGE),
+            targetInRange(this.ship!.position, BLASTER_RANGE),
             targetHasPlayer(Player.other(this.ship!.player))
         ]);
      }
@@ -68,10 +69,10 @@ const BLASTER_DESC     = `Inflicts ${BLASTER_DAMAGE} (${BLASTER_CRIT}) damage on
          /* TODO: Validate action */
          const victim = state.grid.at(target);
 
-         if (victim == null) return true;
+         if (victim == null || victim.type != EntityType.SHIP) return true;
          if (victim.player == this.ship.player) return true;
 
-         const damage = Damage.fromCombat(this.ship, victim, BLASTER_DAMAGE);
+         const damage = Damage.fromCombat(this.ship, victim as Ship, BLASTER_DAMAGE);
 
          if (damage != null) {
              this.ship.inflictDamage(damage);

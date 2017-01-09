@@ -2,9 +2,11 @@
  * @file game/Player.ts
  */
 
-import { Action, ActionType } from "./Action";
+import { EndTurn, Activate, Action, ActionType } from "./Action";
 import { GameState } from "./../game/Game";
 import { Vec2 } from "./Math"
+import { EntityType } from "./GridEntity"
+import { Ship } from "./Ship"
 
 /**
  * There are two players per game
@@ -78,7 +80,7 @@ export class AIPlayer extends Player {
         /* If I've made my move, end my turn */
         if (this.made_move) {
             this.made_move = false;
-            this.action_cb!(new Action(ActionType.END_TURN, null, null, null));
+            this.action_cb!(new EndTurn());
             return;
         }
 
@@ -87,9 +89,11 @@ export class AIPlayer extends Player {
          */
 
         /* Find a ship that's mine */
-        for (let [loc, ship] of state.grid.cells) {
-            if (ship == null) continue;
-            if (ship.player != this.id) continue;
+        for (let [loc, entity] of state.grid.cells) {
+            if (entity == null || entity.type != EntityType.SHIP) continue;
+            if (entity.player != this.id) continue;
+
+            let ship = entity as Ship;
 
             for (let i  = 0; i < ship.items.length; ++i) {
                 const item = ship.items[i];
@@ -101,15 +105,14 @@ export class AIPlayer extends Player {
 
                 if (desc != null) {
                     for (let [loc, _] of state.grid.cells) {
-                        if (desc.matches(ship.id, loc, state)) {
+                        if (desc.matches(loc, state)) {
                             target = loc;
                         }
                     }
                 }
 
 
-                const action = new Action(ActionType.ACTIVATE, ship.id, i,
-                                          target);
+                const action = new Activate(ship.id, i, target);
                 this.made_move = true;
                 this.action_cb!(action);
                 return;
@@ -117,6 +120,6 @@ export class AIPlayer extends Player {
         }
 
         /* Couldn't find an item to use, just end turn */
-        this.action_cb!(new Action(ActionType.END_TURN, null, null, null));
+        this.action_cb!(new EndTurn());
     }
 }

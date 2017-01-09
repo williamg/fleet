@@ -44,9 +44,9 @@ export class Damage {
 
     static fromCombat(attacker: Ship, defender: Ship, base: number):
         Damage | null {
-        const aacc = attacker.accuracy.value();
-        const deva = defender.evasion.value();
-        const apre = attacker.precision.value();
+        const aacc = attacker.pilot.accuracy.value();
+        const deva = defender.pilot.evasion.value();
+        const apre = attacker.pilot.precision.value();
 
         const matchup = aacc / (aacc + deva);
         const hit_chance = NOMINAL_HIT_CHANCE +

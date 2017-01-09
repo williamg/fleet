@@ -5,15 +5,34 @@
 
 import { Vec2 } from "./Math"
 import { HexGrid } from "./HexGrid"
-import { Ship, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
-import { Action, ActionType } from "./Action"
+import { GridEntity, EntityID } from "./GridEntity"
+import { ShipInfo, Ship, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
+import { ShipItem } from "./ShipItem"
+import { Action, ActionType, EndTurn } from "./Action"
 import { Player, PlayerID } from "./Player"
 import { Pilot } from "./Pilot";
+import { DeployPad } from "./DeployPad"
 
 
 import { Blaster } from "./items/Blaster";
 import { SuicideBomb } from "./items/SuicideBomb";
 import { EagleEye } from "./items/EagleEye";
+
+function testShip1(): ShipInfo {
+    let pilot = new Pilot("Han Solo", [2, 2, 2]);
+    let items: ShipItem[] = [new Blaster(), new EagleEye()];
+    let ship = new ShipInfo("Falcon", PlayerID.PLAYER_1, Fighter, pilot, items);
+
+    return ship;
+}
+
+function testShip2(): ShipInfo {
+    let pilot = new Pilot("Darth Vader", [1, 2, 3]);
+    let items: ShipItem[] = [new Blaster()];
+    let ship = new ShipInfo("TIE Fighter", PlayerID.PLAYER_2, Jumper, pilot, items);
+
+    return ship;
+}
 
 /**
  * Maximum turn length in milliseconds
@@ -40,29 +59,14 @@ export function startGame(players: [Player, Player]): void {
 
     /** DEBUG STATE SETUP *****************************************************/
     /* Create a ship, pilot, and gun */
-    let mypilot = new Pilot("Han Solo", [2, 2, 2]);
-    let myship = new Ship("Falcon", PlayerID.PLAYER_1, Fighter, mypilot, destroyShip);
+    let [h1, h2] = state.hangers;
+    h1.push(testShip1());
+    h1.push(testShip1());
+    h1.push(testShip1());
+    h1.push(testShip1());
 
-    myship.equip(new Blaster(), 0);
-    myship.equip(new EagleEye(), 1);
-
-    let pilot2 = new Pilot("Chewy", [1, 1, 3]);
-    let ship2 = new Ship("IDK", PlayerID.PLAYER_1, Vanguard, pilot2, destroyShip);
-
-    let [h, _] = state.hangers;
-    h.push(ship2);
-
-    let opilot = new Pilot("Darth Vader", [1, 3, 1]);
-    let oship = new Ship("TIE Fighter", PlayerID.PLAYER_2, Jumper, opilot, destroyShip);
-    let ogun = new Blaster();
-
-    oship.equip(ogun, 0);
-
-    /* Place on the map */
-    myship.deploy(new Vec2(0, 0));
-    oship.deploy(new Vec2(0, -1));
-    state.grid.set(myship.position!, myship);
-    state.grid.set(oship.position!, oship);
+    state.grid.set(new Vec2(0, 0), testShip1().toShip(new Vec2(0, 0), destroyShip));
+    state.grid.set(new Vec2(0, -1), testShip2().toShip(new Vec2(0, -1), destroyShip));
     /** END DEBUG STATE SETUP *************************************************/
 
     /* Bind event handlers */
@@ -80,11 +84,7 @@ export function startGame(players: [Player, Player]): void {
     function makeAction(player: PlayerID, action: Action): void {
         if (state.current_player != player) return;
 
-        console.log("Player %d", player);
-        console.log("Current player: %d", state.current_player);
-        state = state.do(action);
-        console.log("Current player: %d", state.current_player);
-
+        action.execute(state);
 
         if (gameOver(state)) {
             console.log("Game over!");
@@ -118,8 +118,7 @@ export function startGame(players: [Player, Player]): void {
         state.turn_start = Date.now();
 
         turn_timeout = <any>setTimeout(function() {
-            makeAction(state.current_player,
-                       new Action(ActionType.END_TURN, null, null, null));
+            makeAction(state.current_player, new EndTurn());
         }, TURN_TIMEOUT);
     }
 
@@ -144,9 +143,9 @@ export function startGame(players: [Player, Player]): void {
  */
 export class GameState {
     players: [Player, Player];
-    grid: HexGrid<Ship | null>;                  /* Grid state                */
+    grid: HexGrid<GridEntity | null>;            /* Grid state                */
     current_player: PlayerID;                    /* Current player            */
-    hangers: [Ship[], Ship[]];                   /* Undeployed ships for each
+    hangers: [ShipInfo[], ShipInfo[]];           /* Undeployed ships for each
                                                     player */
     turn_start: number;
 
@@ -156,63 +155,23 @@ export class GameState {
         this.current_player = PlayerID.PLAYER_1;
         this.turn_start = Date.now();
         this.hangers = [[], []];
+
+        for (let loc of DeployPad.P1_TARGETS) {
+            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_1, loc));
+        }
+        for (let loc of DeployPad.P2_TARGETS) {
+            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_2, loc));
+        }
     };
     /**
-     * Perform an action, modifying the game state
-     * @param  {Action}    action Action to perform
-     * @return {GameState}        Resulting game state
-     */
-    do(action: Action): GameState {
-        let ship = (action.source != null) ? this.getShip(action.source)! : null;
-
-        switch(action.type) {
-            case ActionType.DEPLOY:
-                if (ship!.deploy(action.target!)) {
-                    this.grid.set(ship!.position!, ship);
-
-                    let [hanger, other] = this.hangers;
-                    if (ship!.player == PlayerID.PLAYER_2) hanger = other;
-
-                    hanger.splice(hanger.indexOf(ship!), 1);
-                }
-                break;
-            case ActionType.ACTIVATE:
-                ship!.useItem(action.slot!, action.target, this);
-                break;
-            case ActionType.MOVE:
-                /* TODO: Validate this action */
-                let old_pos = ship!.position;
-                if (ship!.move(action.target!)) {
-                    this.grid.set(old_pos!, null);
-                    this.grid.set(ship!.position!, ship);
-                }
-                return this;
-            case ActionType.END_TURN:
-                this.current_player = Player.other(this.current_player);
-                return this;
-        }
-
-        return this;
-    }
-    /**
-     * Get a ship by id
-     * @param  {number} id ID of ship to get
+     * Get an entity by id
+     * @param  {EntityID} id ID of entity to get
      * @return {Ship}      Ship or null if no ship exists
      */
-    getShip(id: number): Ship | null {
+    getEntity(id: EntityID): GridEntity | null {
         /* Search grid */
-        for (let [loc, ship] of this.grid.cells) {
-            if (ship && ship.id == id) return ship
-        }
-
-        const [p1hanger, p2hanger] = this.hangers;
-
-        for (let ship of p1hanger) {
-            if (ship.id == id) return ship;
-        }
-
-        for (let ship of p2hanger) {
-            if (ship.id == id) return ship;
+        for (let [loc, entity] of this.grid.cells) {
+            if (entity && entity.id == id) return entity
         }
 
         return null;

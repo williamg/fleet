@@ -63,9 +63,9 @@ export class AttributeBuff extends StatusEffect {
         switch(this.attribute) {
             case "recharge": return ship.recharge;
             case "move_cost": return ship.move_cost;
-            case "accuracy": return ship.accuracy;
-            case "precision": return ship.precision;
-            case "evasion": return ship.evasion;
+            case "accuracy": return ship.pilot.accuracy;
+            case "precision": return ship.pilot.precision;
+            case "evasion": return ship.pilot.evasion;
         }
     }
 }

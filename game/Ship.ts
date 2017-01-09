@@ -3,6 +3,7 @@
  */
 
 import { Vec2, hexDist } from "./Math";
+import { GridEntity, EntityType } from "./GridEntity"
 import { Pilot } from "./Pilot"
 import { Attribute } from "./Attribute"
 import { Damage, DamageResult } from "./Damage"
@@ -51,49 +52,63 @@ export const Vanguard: ShipClass = {
     num_slots: 3
 };
 /**
+ * Represents a ship *not* on the map (either not yet deployed or destroyed)
+ */
+export class ShipInfo {
+    readonly name: string;
+    readonly player: PlayerID;
+    readonly class: ShipClass;
+    readonly pilot: Pilot;
+    readonly items: ShipItem[];
+
+    static fromShip(ship: Ship): ShipInfo {
+        return new ShipInfo(ship.name, ship.player, ship.class, ship.pilot,
+                            ship.items);
+    }
+
+    constructor(name: string, player: PlayerID, ship_class: ShipClass,
+                pilot: Pilot, items: ShipItem[]) {
+        this.name = name;
+        this.player = player;
+        this.class = ship_class;
+        this.pilot = pilot;
+        this.items = items;
+    }
+
+    toShip(position: Vec2, on_destroy: (ship: Ship) => void): Ship {
+        return new Ship(this.name, this.player, this.class, this.pilot,
+                        position, this.items, on_destroy);
+    }
+}
+/**
  * Represents a single ship on the map (or destroyed, or not yet deployed)
  */
-export class Ship {
-    static P1_DEPLOY_TARGETS: Vec2[] = [
-        new Vec2(-2, 3), new Vec2(0, 2), new Vec2(2, 1)
-    ];
-    static P2_DEPLOY_TARGETS: Vec2[] = [
-        new Vec2(-2, -1), new Vec2(0, -2), new Vec2(2, -3)
-    ];
-
-    private static max_id = 0;
-
+export class Ship extends GridEntity {
     /* Ship info */
     readonly name: string;                             /* Name of the vessel  */
     readonly class: ShipClass;                         /* Ship class          */
-    readonly player: PlayerID;                         /* ID of owning player */
-    readonly id: number;                               /* ID of this ship     */
-    readonly pilot_name: string;                       /* Pilot name          */
     private readonly on_destroy: (ship: Ship) => void; /* Destroy callback    */
 
     /* Ship state */
-    position: Vec2 | null;                     /* Position if deployed*/
-    readonly items: (ShipItem | null)[];       /* Equipped items      */
+    readonly items: ShipItem[];       /* Equipped items      */
     readonly health: Resource;
     readonly charge: Resource;
     readonly effectManager: EffectManager;
     readonly recharge: Attribute;
     readonly move_cost: Attribute;
-    readonly accuracy: Attribute;
-    readonly precision: Attribute;
-    readonly evasion: Attribute;
+    readonly pilot: Pilot;
 
     constructor(name: string, player: PlayerID, ship_class: ShipClass,
-                pilot: Pilot, on_destroy: (ship: Ship) => void) {
+                pilot: Pilot, position: Vec2, items: ShipItem[],
+                on_destroy: (ship: Ship) => void) {
+        super(EntityType.SHIP, player, position);
+
         this.name = name;
-        this.player = player;
         this.class = ship_class;
-        this.id = Ship.max_id++;
-        this.pilot_name = pilot.name;
+        this.pilot = pilot;
         this.on_destroy = on_destroy;
 
-        this.position = null;
-        this.items = new Array(this.class.num_slots);
+        this.items = items;
         this.health = new Resource(0, this.class.max_health,
                                    this.class.max_health);
         this.charge = new Resource(0, this.class.max_charge,
@@ -102,12 +117,9 @@ export class Ship {
         this.recharge =
             new Attribute(0, this.class.max_charge, this.class.recharge);
         this.move_cost = new Attribute(0, Infinity, this.class.move_cost);
-        this.accuracy = new Attribute(0, Infinity, pilot.accuracy);
-        this.precision = new Attribute(0, Infinity, pilot.precision);
-        this.evasion = new Attribute(0, Infinity, pilot.evasion);
 
         for (let i = 0; i < this.items.length; ++i) {
-            this.items[i] = null;
+            this.items[i].handleEquip(this);
         }
     }
     /**
@@ -116,28 +128,15 @@ export class Ship {
      * @return {boolean}      Whether or not the move was successful
      */
     move(dest: Vec2): boolean {
-        if (this.position == null) return false;
-
         const move_cost = this.move_cost.value();
         const range = Math.floor(this.charge.current / move_cost);
-        const dist = hexDist(this.position, dest);
+        const dist = hexDist(this._position, dest);
 
         if (dist > range)  return false;
 
         /* TODO: Ensure dest is actually reachable from current position */
-        this.position = dest;
+        this._position = dest;
         this.charge.increment(-dist * move_cost);
-        return true;
-    }
-    /**
-     * Attempt to deploy this ship onto the hex grid
-     * @param  {Vec2}    dest Destination hex
-     * @return {boolean}      Whether or not deploying was successful
-     */
-    deploy(dest: Vec2): boolean {
-        if (this.position != null) return false;
-
-        this.position = dest;
         return true;
     }
     /**
@@ -145,28 +144,6 @@ export class Ship {
      */
     applyEffect(effect: StatusEffect): void {
         this.effectManager.apply(effect);
-    }
-    /**
-     * Equip an item onto this ship
-     * @param  {ShipItem} item Item to equip
-     * @param  {number}   slot Slot to equip into [0, ship.class.num_slots)
-     * @return {boolean}       True on success, false on error
-     */
-    equip(item: ShipItem, slot: number): boolean {
-        console.assert(slot >= 0 && slot < this.items.length)
-
-        let old_item = this.unequip(slot);
-
-        if (item.handleEquip(this)) {
-            this.items[slot] = item;
-            return true;
-        } else {
-            if (old_item != null && !old_item.handleEquip(this)) {
-                console.assert(false);
-            }
-
-            return false;
-        }
     }
     /**
      * Use the item in the given slot
@@ -202,23 +179,6 @@ export class Ship {
                 item.processTurnEnd();
             }
         }
-    }
-    /**
-     * Unequip the item, if any, in the given slot
-     * @param  {number}   slot Slot to unequip [0, this.class.num_slots)
-     * @return {ShipItem}      Item unequipped, if any
-     */
-    unequip(slot: number): ShipItem | null {
-        console.assert(slot >= 0 && slot < this.items.length);
-
-        const equipped = this.items[slot];
-
-        if (equipped != null) {
-            equipped.handleUnequip(this);
-            this.items[slot] = null;
-        }
-
-        return equipped;
     }
     /**
      * Inflict some damage on another ship
