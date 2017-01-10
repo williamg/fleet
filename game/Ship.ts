@@ -14,6 +14,7 @@ import { PlayerID } from "./Player"
 import { ShipItem } from "./ShipItem"
 import { StatusEffect, EffectManager } from "./StatusEffect"
 import { TargetDescription } from "./Target"
+import { DeployPad } from "./DeployPad"
 
 /**
  * Describes a particular class of ship.
@@ -87,7 +88,7 @@ export class Ship extends GridEntity {
     /* Ship info */
     readonly name: string;                             /* Name of the vessel  */
     readonly class: ShipClass;                         /* Ship class          */
-    private readonly on_destroy: (ship: Ship) => void; /* Destroy callback    */
+    private readonly on_destroy: (e: GridEntity) => void; /* Destroy callback    */
 
     /* Ship state */
     readonly items: ShipItem[];       /* Equipped items      */
@@ -100,7 +101,7 @@ export class Ship extends GridEntity {
 
     constructor(name: string, player: PlayerID, ship_class: ShipClass,
                 pilot: Pilot, position: Vec2, items: ShipItem[],
-                on_destroy: (ship: Ship) => void) {
+                on_destroy: (e: GridEntity) => void) {
         super(EntityType.SHIP, player, position);
 
         this.name = name;
@@ -187,7 +188,11 @@ export class Ship extends GridEntity {
     inflictDamage(damage: Damage): void {
         this.effectManager.modifyInflictDamage(damage);
 
-        damage.target.receiveDamage(damage);
+        if (damage.target.type == EntityType.SHIP) {
+            (damage.target as Ship).receiveDamage(damage);
+        } else if (damage.target.type == EntityType.DEPLOY_PAD) {
+            (damage.target as DeployPad).receiveDamage(damage);
+        }
     }
     /**
      * Receive incoming damage
@@ -201,6 +206,5 @@ export class Ship extends GridEntity {
         if (this.health.current == 0) {
             this.on_destroy(this);
         }
-
     }
 };

@@ -3,7 +3,7 @@
  */
 
 import { StatusEffect } from "../StatusEffect"
-import { Ship } from "../Ship"
+import { GridEntity } from "../GridEntity"
 import { Damage } from "../Damage"
 
 export class Shielded extends StatusEffect {
@@ -14,7 +14,7 @@ export class Shielded extends StatusEffect {
         this.shield_remaining = strength;
     }
 
-    apply(ship: Ship): void {}
+    apply(entity: GridEntity): void {}
     processTurnEnd(): void {}
 
     isActive(): boolean {

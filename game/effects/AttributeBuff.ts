@@ -3,13 +3,16 @@
  */
  import { StatusEffect } from "../StatusEffect"
  import { Attribute, BuffID } from "../Attribute"
+ import { GridEntity, EntityType } from "../GridEntity"
  import { Ship } from "../Ship"
 
  export type AttributeName = "recharge" | "move_cost" | "accuracy" |
                              "precision" | "evasion";
 
 /**
- * Applies an attribute buff for a fiex number of turns
+ * Applies an attribute buff for a fixed number of turns
+ *
+ * TODO: Make this more flexible so it can apply to generic GridEntities
  */
 export class AttributeBuff extends StatusEffect {
     private readonly attribute: AttributeName;
@@ -36,7 +39,10 @@ export class AttributeBuff extends StatusEffect {
         this.percent_id = null;
     }
 
-    apply(ship: Ship) {
+    apply(entity: GridEntity) {
+        if (entity.type != EntityType.SHIP) return;
+
+        const ship = entity as Ship;
         const attribute = this.getAttribute(ship);
 
         this.ship = ship;

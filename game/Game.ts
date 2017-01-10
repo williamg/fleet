@@ -65,15 +65,14 @@ export function startGame(players: [Player, Player]): void {
     h1.push(testShip1());
     h1.push(testShip1());
 
-    state.grid.set(new Vec2(0, 0), testShip1().toShip(new Vec2(0, 0), destroyShip));
-    state.grid.set(new Vec2(0, -1), testShip2().toShip(new Vec2(0, -1), destroyShip));
+    state.grid.set(new Vec2(0, 0), testShip1().toShip(new Vec2(0, 0), destroyEntity));
+    state.grid.set(new Vec2(0, -1), testShip2().toShip(new Vec2(0, -1), destroyEntity));
+
     /** END DEBUG STATE SETUP *************************************************/
 
     /* Bind event handlers */
-    function destroyShip(ship: Ship): void{
-         console.assert(ship!.position! != null);
-
-         state.grid.set(ship!.position!, null);
+    function destroyEntity(entity: GridEntity): void{
+         state.grid.set(entity.position, null);
     }
 
     /**
@@ -156,11 +155,15 @@ export class GameState {
         this.turn_start = Date.now();
         this.hangers = [[], []];
 
+        function destroyEntity(e: GridEntity) {
+            this.grid.set(e.position, null);
+        }
+
         for (let loc of DeployPad.P1_TARGETS) {
-            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_1, loc));
+            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_1, loc, destroyEntity.bind(this)));
         }
         for (let loc of DeployPad.P2_TARGETS) {
-            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_2, loc));
+            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_2, loc, destroyEntity.bind(this)));
         }
     };
     /**

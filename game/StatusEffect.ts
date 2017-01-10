@@ -1,7 +1,7 @@
 /**
  * @file game/Effect.ts
  */
-import { Ship } from "./Ship"
+import { GridEntity } from "./GridEntity"
 import { Damage } from "./Damage"
 
 /**
@@ -15,9 +15,9 @@ export abstract class StatusEffect {
 
     /**
      * Called when this effect is applied to a ship
-     * @param {Ship} ship Ship that the effect is being applied to
+     * @param {GridEntity} entity Entity that the effect is being applied to
      */
-    abstract apply(ship: Ship): void;
+    abstract apply(entity: GridEntity): void;
 
     /**
      * Process the ending of a turn
@@ -46,11 +46,11 @@ export abstract class StatusEffect {
  * Manages the effects applied to a ship
  */
 export class EffectManager {
-    private readonly ship: Ship;
+    private readonly entity: GridEntity;
     private active_effects: StatusEffect[];
 
-    constructor(ship: Ship) {
-        this.ship = ship;
+    constructor(entity: GridEntity) {
+        this.entity = entity;
         this.active_effects = [];
     }
     /**
@@ -58,7 +58,7 @@ export class EffectManager {
      * @param {StatusEffect} effect Effect to apply
      */
     apply(effect: StatusEffect): void {
-        effect.apply(this.ship);
+        effect.apply(this.entity);
 
         if (!effect.isActive()) return;
 

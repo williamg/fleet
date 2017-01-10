@@ -3,6 +3,7 @@
  */
 
 import { Ship } from "./Ship"
+import { GridEntity, EntityType } from "./GridEntity"
 import { StatusEffect } from "./StatusEffect"
 
 const NOMINAL_HIT_CHANCE = 0.75;
@@ -40,25 +41,28 @@ export class Damage {
     readonly source: DamageSource;
     result: DamageResult;
     amount: number;
-    target: Ship;
+    target: GridEntity;
 
-    static fromCombat(attacker: Ship, defender: Ship, base: number):
+    static fromCombat(attacker: Ship, defender: GridEntity, base: number):
         Damage | null {
-        const aacc = attacker.pilot.accuracy.value();
-        const deva = defender.pilot.evasion.value();
-        const apre = attacker.pilot.precision.value();
+        if (defender.type == EntityType.SHIP) {
+            const dship = defender as Ship;
+            const aacc = attacker.pilot.accuracy.value();
+            const deva = dship.pilot.evasion.value();
 
-        const matchup = aacc / (aacc + deva);
-        const hit_chance = NOMINAL_HIT_CHANCE +
-                           (1 - NOMINAL_HIT_CHANCE) * matchup;
+            const matchup = aacc / (aacc + deva);
+            const hit_chance = NOMINAL_HIT_CHANCE +
+                               (1 - NOMINAL_HIT_CHANCE) * matchup;
 
-        /* Swing and a miss */
-        if (Math.random() > hit_chance) {
-            console.log("MISS");
-            return null;
+            /* Swing and a miss */
+            if (Math.random() > hit_chance) {
+                console.log("MISS");
+                return null;
+            }
         }
 
         /* Definitely hit, now determine if it was a crit or not */
+        const apre = attacker.pilot.precision.value();
         const pval = apre / CRIT_EFFECTIVENESS;
         const crit_chance = MAX_CRIT_CHANCE / (1 + Math.exp(pval));
         const result = (Math.random() > crit_chance) ? DamageResult.NORMAL
@@ -71,7 +75,7 @@ export class Damage {
     }
 
     constructor(result: DamageResult, amount: number, source: DamageSource,
-                target: Ship) {
+                target: GridEntity) {
         this.source = source;
         this.result = result;
         this.amount = amount;

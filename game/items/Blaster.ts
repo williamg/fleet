@@ -69,7 +69,7 @@ const BLASTER_DESC     = `Inflicts ${BLASTER_DAMAGE} (${BLASTER_CRIT}) damage on
          /* TODO: Validate action */
          const victim = state.grid.at(target);
 
-         if (victim == null || victim.type != EntityType.SHIP) return true;
+         if (victim == null) return true;
          if (victim.player == this.ship.player) return true;
 
          const damage = Damage.fromCombat(this.ship, victim as Ship, BLASTER_DAMAGE);
