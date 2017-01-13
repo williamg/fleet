@@ -2,11 +2,9 @@
  * @file game/Player.ts
  */
 
-import { EndTurn, Activate, Action, ActionType } from "./Action";
-import { GameState } from "./../game/Game";
+import { Activate, Action, ActionType } from "./Action";
+import { GlobalState } from "./GlobalState"
 import { Vec2 } from "./Math"
-import { EntityType } from "./GridEntity"
-import { Ship } from "./Ship"
 
 /**
  * There are two players per game
@@ -17,6 +15,7 @@ export enum PlayerID {
 };
 
 export type ActionCB = (action: Action) => void;
+export type EndTurnCB = () => void;
 /**
  * A player is how the game logic represents a...player. The primary function
  * is to serve as the "deliverer" of player actions
@@ -38,18 +37,21 @@ export abstract class Player {
     }
     /**
      * Initialize a player, setting the initial state
-     * @param {PlayerID}  id        ID of this player
-     * @param {GameState} state     Initial game state
-     * @param {ActionCB}  action_cb Function to be called whenever the player
-     *                              wants to perform an action
+     * @param {PlayerID}    id        ID of this player
+     * @param {GlobalState} state     Initial game state
+     * @param {ActionCB}    actionFn  Function to be called whenever the player
+     *                                wants to perform an action
+     * @param {EndTurnCB}   endTurnFn Function to be called whenever the player
+     *                                is ready to end their turn
      */
-    abstract init(id: PlayerID, state: GameState, action_cb: ActionCB): void;
+    abstract init(id: PlayerID, state: GlobalState, actionFn: ActionCB,
+                  endTurnFn: EndTurnCB): void;
     /**
      * Update the state of a player, probably as a result of performing an
      * action
-     * @param {GameState} state New state
+     * @param {GlobalState} state New state
      */
-    abstract setState(state: GameState): void;
+    abstract update(state: GlobalState): void;
 }
 /**
  * Simple AI player. Does nothing but end their turn right now.
@@ -57,69 +59,30 @@ export abstract class Player {
  */
 export class AIPlayer extends Player {
     private id: PlayerID | null;
-    private action_cb: ActionCB | null;
+    private actionFn: ActionCB | null;
+    private endTurnFn: EndTurnCB | null;
     private made_move: boolean;
 
     constructor() {
         super("AI Player");
 
         this.id = null;
-        this.action_cb = null;
+        this.actionFn = null;
+        this.endTurnFn = null;
         this.made_move = false;
     }
 
-    init(id: PlayerID, state: GameState, action_cb: ActionCB): void {
+    init(id: PlayerID, state: GlobalState, actionFn: ActionCB,
+         endTurnFn: EndTurnCB): void {
         this.id = id;
-        this.action_cb = action_cb;
+        this.actionFn = actionFn;
+        this.endTurnFn = endTurnFn;
         this.made_move = false;
     }
 
-    setState(state: GameState): void {
+    update(state: GlobalState): void {
         if (state.current_player != this.id) return;
 
-        /* If I've made my move, end my turn */
-        if (this.made_move) {
-            this.made_move = false;
-            this.action_cb!(new EndTurn());
-            return;
-        }
-
-        /* If it's my turn and I have an item, try to use it and then end my
-         * turn
-         */
-
-        /* Find a ship that's mine */
-        for (let [loc, entity] of state.grid.cells) {
-            if (entity == null || entity.type != EntityType.SHIP) continue;
-            if (entity.player != this.id) continue;
-
-            let ship = entity as Ship;
-
-            for (let i  = 0; i < ship.items.length; ++i) {
-                const item = ship.items[i];
-
-                if (item == null) continue;
-
-                let desc = item.targetRequired();
-                let target: Vec2 | null = null;
-
-                if (desc != null) {
-                    for (let [loc, _] of state.grid.cells) {
-                        if (desc.matches(loc, state)) {
-                            target = loc;
-                        }
-                    }
-                }
-
-
-                const action = new Activate(ship.id, i, target);
-                this.made_move = true;
-                this.action_cb!(action);
-                return;
-            }
-        }
-
-        /* Couldn't find an item to use, just end turn */
-        this.action_cb!(new EndTurn());
+        this.endTurnFn!();
     }
 }

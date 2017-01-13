@@ -14,7 +14,7 @@
  import { LOG, ASSERT } from "./util"
 
  /* Message types */
- import { Damage } from "./systems/CombatSystem"
+ import { Damage } from "./Damage"
 
 /* EntityIDs should be treated as disctinct from "number" whenever possible.
  * Don't do myvar: EntityID = anotherID + 1; */

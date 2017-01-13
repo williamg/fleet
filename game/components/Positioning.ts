@@ -18,20 +18,26 @@ export class Position extends Component {
      */
     private _position: Vec2;
 
-    get position() {
-        return this.position;
-    }
-
-    /* Make sure we don't copy by reference; directly copy the values */
-    set position(position: Vec2) {
-        this._position.x = position.x;
-        this._position.y = position.y;
-    }
+    get position() { return this.position; }
 
     constructor(entity: Entity, position: Vec2) {
         super(entity);
 
-        this.position = position;
+        this._position = position;
+
+        const state = entity.global_state;
+        state.grid.set(position, this.entity.id);
+        state.messenger.publish(state);
+    }
+
+    setPosition(position: Vec2) {
+        const state = this.entity.global_state;
+
+        state.grid.set(this.position, null);
+        this._position.x = position.x;
+        this._position.y = position.y;
+        state.grid.set(this.position, this.entity.id);
+        state.messenger.publish(state);
     }
 }
 
@@ -96,11 +102,7 @@ export class Movement extends Component {
         const cost = dist * this.move_cost.value();
 
         this._charge_comp.increment(-cost);
-        this._position_comp.position = dest;
-
-        state.grid.set(start_pos, null);
-        state.grid.set(dest, this.entity.id);
-        state.messenger.publish(state);
+        this._position_comp.setPosition(dest);
 
         return true;
     }

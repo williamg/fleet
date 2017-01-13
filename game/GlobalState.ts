@@ -4,6 +4,7 @@
 import { EntityID } from "./Entity"
 import { HexGrid } from "./HexGrid"
 import { Messenger } from "./Messenger"
+import { PlayerID } from "./Player"
 
 /**
  * Global state needed by all/multiple entities. State represented here spans
@@ -16,8 +17,10 @@ export class GlobalState {
     readonly messenger: Messenger<GlobalState> = new Messenger<GlobalState>();
     readonly grid: HexGrid<EntityID | null> =
         new HexGrid<EntityID | null>((_) => { return null; });
+    current_player: PlayerID;
+    turn_start: number;
 
     constructor() {
-
+        this.current_player = PlayerID.PLAYER_1;
     }
 }

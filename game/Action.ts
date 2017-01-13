@@ -3,7 +3,9 @@
  */
 import { Entity, EntityID } from "./Entity"
 import { Vec2 } from "./Math"
+import { Item, ItemID } from "./components/Item"
 import { Movement } from "./components/Positioning"
+import { Deployable } from "./components/Deployable"
 
 /**
  * Type of action
@@ -76,92 +78,68 @@ export class Activate extends Action {
      * ID of ship item is equipped on
      * @type {EntityID}
      */
-    private readonly _id: EntityID;
+    private readonly _entity_id: EntityID;
     /**
      * Slot the desired item is in
      * @type {number}
      */
-    private readonly _slot: number;
+    private readonly _item_id: ItemID;
     /**
      * Target (if required)
-     * @type {Target}
+     * @type {EntityID}
      */
-    private readonly _target: Vec2 | null;
+    private readonly _target: EntityID | null;
 
-    constructor(id: EntityID, slot: number, target: Vec2 | null) {
+    constructor(id: EntityID, item: ItemID, target: EntityID | null) {
         super(ActionType.ACTIVATE);
 
-        this._id = id;
-        this._slot = slot;
+        this._entity_id = id;
+        this._item_id = id;
         this._target = target;
     }
 
     execute(): boolean {
-        const entity = state.getEntity(this._id);
+        const entity = Entity.getEntity(this._entity_id);
 
-        if (entity == null || entity.type != EntityType.SHIP) return false;
+        if (entity == null) return false;
 
-        const ship = entity as Ship;
+        const items = entity.getComponents(Item);
+        let item: Item | null = null;
 
-        ship.useItem(this._slot, this._target, state);
-        return true;
+        for (const i of items) {
+            if (i.id == this._item_id) {
+                item = i;
+                break;
+            }
+        }
+
+        if (item == null) return false;
+
+        return item.use(this._target);
+
     }
 }
 
 export class Deploy extends Action {
-    private _hanger_index: number;
+    private _id: EntityID;
     private _dest: Vec2;
 
-    constructor(hanger_index: number, dest: Vec2) {
+    constructor(id: EntityID, dest: Vec2) {
         super(ActionType.DEPLOY);
 
-        this._hanger_index = hanger_index;
+        this._id = id;
         this._dest = dest;
     }
 
-    execute(state: GameState): boolean {
-        /* Need to find closest deploy pad */
-        let [hanger, other] = state.hangers;
-        let dps = DeployPad.P1_TARGETS;
-        let target_dp: DeployPad | null = null;
+    execute(): boolean {
+        const entity = Entity.getEntity(this._id);
 
-        if (state.current_player == PlayerID.PLAYER_2) {
-            hanger = other;
-            dps = DeployPad.P2_TARGETS;
-        }
+        if (entity == null) return false;
 
-        for (let dp of dps) {
-            if (hexDist(dp, this._dest) == 1) {
-                target_dp = state.grid.at(dp)! as DeployPad;
-            }
-        }
+        const deployable = entity.getComponent(Deployable);
 
-        if (target_dp == null) return false;
+        if (deployable == null) return false;
 
-        target_dp.deploy();
-
-        const info = hanger[this._hanger_index];
-        hanger.splice(this._hanger_index, 1);
-
-        const ship = info.toShip(this._dest, function(ship: Ship) {
-            state.grid.set(ship.position, null);
-        });
-
-        state.grid.set(ship.position, ship);
-
-        return true;
-    }
-}
-/**
- * End a player's turn
- */
-export class EndTurn extends Action {
-    constructor() {
-        super(ActionType.END_TURN);
-    }
-
-    execute(state: GameState): boolean {
-        state.current_player = Player.other(state.current_player);
-        return true;
+        return deployable.deploy(this._dest);
     }
 }

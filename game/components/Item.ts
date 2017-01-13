@@ -12,7 +12,7 @@ export type ItemID = number;
  * weapons to buffs to shields. Items have a (possibly 0) cooldown along with
  * a (possible 0) cost.
  */
-export abstract class Item extends Component {
+export class Item extends Component {
     private static _next_id = 0;
 
     readonly id: ItemID = Item._next_id++;
@@ -47,21 +47,40 @@ export abstract class Item extends Component {
      * Use this item
      * @return {boolean} Whether or not usage was successful
      */
-    use(): boolean {
+    use(target: EntityID | null): boolean {
         if (this.cooldown_remaining > 0) return false;
         if (this.cost > 0 &&
             this.charge!.current_charge < this.cost) return false;
 
-        return this._use();
+        const filter = this.targetFilter();
+
+        if (target == null && filter != null) return false;
+        if (target != null && filter == null) return false;
+        if (filter != null && !filter.matches(target!)) return false;
+
+        if (this._use(target)) {
+            if (this.cost > 0) {
+                this.charge!.increment(-this.cost);
+            }
+
+            this.cooldown_remaining = this.cooldown;
+            return true;
+        }
+
+        return false;
     }
     /**
-     * Return a filter for valid targets for this item
-     * @return {Filter<EntityID>} Valid target filter
+     * Return a filter for valid targets for this item, if targets are required
+     * @return {Filter<EntityID>| null} Valid target filter or null if no target
+     *                                  required
      */
-    abstract targetFilter(): Filter<EntityID>;
+    targetFilter(): Filter<EntityID> | null { return null; }
     /**
-     * Item-specific implementation
+     * Item-specific implementation. Can assume that:
+     * - Item is off cooldown
+     * - There is sufficient charge
+     * - If provided, the target matches the filter's requirements
      * @return {boolean} Whether or not usage was successful
      */
-    protected abstract _use(): boolean;
+    protected _use(target: EntityID | null): boolean { return false; };
 }
