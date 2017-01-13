@@ -8,12 +8,11 @@ import { Entity } from "./Entity"
 import { GlobalState } from "./GlobalState"
 import { HexGrid } from "./HexGrid"
 import { Vec2 } from "./Math"
-import { newShip, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
+import { newShip, newDeployPad, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
 import { Player, PlayerID } from "./Player"
 import { Team } from "./components/Team"
 
 
-import { newBlaster } from "./items/Blaster";
 
 /**
  * Maximum turn length in milliseconds
@@ -39,11 +38,11 @@ export function startGame(players: [Player, Player]): void {
     let turn_timeout: number | null = null;
 
     /** DEBUG STATE SETUP *****************************************************/
-    const ship = newShip(Jumper, PlayerID.PLAYER_1, "Han Solo", [2, 2, 2]);
-    const blaster = newBlaster(ship);
+    const ship = newShip(state, Jumper, "Falcon", PlayerID.PLAYER_1, "Han Solo", [2, 2, 2]);
+    const dp = newDeployPad(state, new Vec2(0, 0), PlayerID.PLAYER_1);
 
-    const oship = newShip(Vanguard, PlayerID.PLAYER_2, "Darth Vade", [1, 4, 1]);
-    const oblaster = newBlaster(oship);
+    //const oship = newShip(Vanguard, PlayerID.PLAYER_2, "Darth Vade", [1, 4, 1]);
+    //const oblaster = newBlaster(oship);
     /** END DEBUG STATE SETUP *************************************************/
 
     let [p1, p2] = players;
@@ -56,7 +55,10 @@ export function startGame(players: [Player, Player]): void {
     function makeAction(player: PlayerID, action: Action): void {
         if (state.current_player != player) return;
 
-        action.execute();
+        /* We assume that if the action fails, no state change occurred, so we
+         * just return silently
+         */
+        if (!action.execute()) return;
 
         if (gameOver(state)) {
             console.log("Game over!");
@@ -72,6 +74,9 @@ export function startGame(players: [Player, Player]): void {
     function startTurn(): void {
         state.turn_start = Date.now();
         turn_timeout = <any>setTimeout(endTurn, TURN_TIMEOUT);
+
+        p1.update(state);
+        p2.update(state);
     }
     /**
      * End the current turn
@@ -92,6 +97,7 @@ export function startGame(players: [Player, Player]): void {
 
         state.current_player = Player.other(state.current_player);
         state.messenger.publish(state);
+        startTurn();
     }
 
     /* Initialize players */

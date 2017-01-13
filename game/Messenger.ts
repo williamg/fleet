@@ -13,6 +13,11 @@ export class Messenger<T> {
     private _next_id: SubscriberID;
     private _subscribers: Map<SubscriberID, [Priority, Handler<T>]>;
 
+    constructor() {
+        this._next_id = 0;
+        this._subscribers = new Map<SubscriberID, [Priority, Handler<T>]>();
+    }
+
     /**
      * Subscribe to all messages published on this messenger.
      *

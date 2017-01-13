@@ -18,7 +18,7 @@ export class Position extends Component {
      */
     private _position: Vec2;
 
-    get position() { return this.position; }
+    get position(): Vec2 { return this._position; }
 
     constructor(entity: Entity, position: Vec2) {
         super(entity);

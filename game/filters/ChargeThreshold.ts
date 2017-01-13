@@ -6,7 +6,7 @@ import { Entity } from "../Entity"
 import { Filter } from "../Filter"
 
 export class ChargeThreshold extends Filter<Entity> {
-    private readonly _min_charge;
+    private readonly _min_charge: number;
 
     constructor(min_charge: number) {
         super();

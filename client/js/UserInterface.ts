@@ -1,17 +1,17 @@
 /**
  * @file client/js/UserInterface.ts
- * Defines an itnerface for implementing a user interface. In the future, we may
+ * Defines an interface for implementing a user interface. In the future, we may
  * have a separate implementation for mobile browsers and desktop browsers. We
  * may also want an interface with a 3D or isomorphic representation. This
  * abstraction provides an easy way to drop in different implementations
  */
 
 import { Action } from "../../game/Action"
-import { GameState } from "../../game/Game"
+import { GlobalState } from "../../game/GlobalState"
 import { ActionCB } from "../../game/Player"
 
 export abstract class UserInterface {
-    constructor(action_cb: ActionCB) {
+    constructor() {
 
          /* Install resize handler */
          window.onresize = (e) => {
@@ -33,7 +33,7 @@ export abstract class UserInterface {
      /**
       * Report a new game state
       **/
-      abstract setState(state: GameState): void;
+      abstract update(state: GlobalState): void;
 
       /**
        * Update the interface. This will be called once per "iteration" of the

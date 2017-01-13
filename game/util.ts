@@ -15,8 +15,8 @@ enum LogLevel {
 const logLevel: LogLevel = LogLevel.DEBUG;
 const debug: boolean = true;
 
-function logfn(level: LogLevel, pre: string): (s: string, ...args) => void {
-    function log(s: string, ...args) {
+function logfn(level: LogLevel, pre: string): (s: string, ...args: any[]) => void {
+    function log(s: string, ...args: any[]) {
         if (logLevel >= level)  {
             console.log(pre + " "+ s, args);
         }

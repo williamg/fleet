@@ -2,10 +2,18 @@
  * @file game/Ship.ts
  */
 
-import { Movement, Charge, Health, Items, Team, Size, Pilot } from "./Components"
-import { PlayerID } from "./Player"
 import { Entity } from "./Entity"
-
+import { GlobalState } from "./GlobalState"
+import { PlayerID } from "./Player"
+import { Vec2 } from "./Math"
+import { Charge } from "./components/Charge"
+import { Deployable } from "./components/Deployable"
+import { DeployZone } from "./components/DeployZone"
+import { Health } from "./components/Health"
+import { Pilot } from "./components/Pilot"
+import { Position } from "./components/Positioning"
+import { ShipInfo } from "./components/ShipInfo"
+import { Team } from "./components/Team"
 /**
  * Describes a particular class of ship.
  */
@@ -43,19 +51,29 @@ export const Vanguard: ShipClass = {
     num_slots: 3
 };
 
-export function newShip(ship_class: ShipClass, player: PlayerID, pilot_name: string,
+export function newShip(state: GlobalState, ship_class: ShipClass, name: string,
+                        player: PlayerID, pilot_name: string,
                         pilot_stats: [number, number, number]): Entity {
-    let entity = new Entity();
-    const id = entity.id;
-    entity.addComponent(Charge, id, ship_class.max_charge, ship_class.recharge);
-    entity.addComponent(Health, id, ship_class.max_health);
-    entity.addComponent(Movement, id, ship_class.move_cost);
-    entity.addComponent(Size, id, ship_class.size);
-    entity.addComponent(Team, id, player);
-    entity.addComponent(Items, id, ship_class.num_slots);
+    let entity = new Entity(state);
+    entity.addComponent(Charge, entity, ship_class.max_charge, ship_class.recharge);
+    entity.addComponent(Health, entity, ship_class.max_health);
+    entity.addComponent(Deployable, entity, ship_class.move_cost);
+    entity.addComponent(ShipInfo, entity, name, ship_class.size);
+    entity.addComponent(Team, entity, player);
 
     const [acc, pre, eva] = pilot_stats;
-    entity.addComponent(Pilot, id, pilot_name, acc, pre, eva);
+    entity.addComponent(Pilot, entity, pilot_name, acc, pre, eva);
+
+    return entity;
+}
+
+export function newDeployPad(state: GlobalState, pos: Vec2, player: PlayerID): Entity {
+    let entity = new Entity(state);
+    entity.addComponent(Charge, entity, 50, 5);
+    entity.addComponent(Health, entity, 100);
+    entity.addComponent(DeployZone, entity, state.grid.neighbors(pos));
+    entity.addComponent(Position, entity, pos);
+    entity.addComponent(Team, entity, player);
 
     return entity;
 }

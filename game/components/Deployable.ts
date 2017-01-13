@@ -69,7 +69,7 @@ export class Deployable extends Component {
         const charge = this.entity.getComponent(Charge)!;
         const pos = this.entity.addComponent(Position, this.entity, dest);
         this.entity.addComponent(Movement, this.entity, pos, charge,
-                                 this.deploy_cost);
+                                 this.deploy_cost.value());
 
         /* Now we have to find the deploy pad to decrement its charge.
          * TODO: Figure out how to let this reuse this same computation from

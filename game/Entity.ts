@@ -86,6 +86,7 @@ export class Entity {
     readonly destroyMessenger: Messenger<Damage> = new Messenger<Damage>();
 
     constructor(initial_state: GlobalState) {
+        Entity._entities.set(this.id, this);
         this.global_state = initial_state;
         this._global_state_sub =
             initial_state.messenger.subscribe(this.setState.bind(this), 0);
@@ -139,8 +140,8 @@ export class Entity {
      * @return {T}                                        Component instance
      */
     addComponent<T extends Component>(
-        componentType: { new (...args: any[]): T;}, ...args): T {
-        const instance = new componentType(args);
+        componentType: { new (...args: any[]): T;}, ...args: any[]): T {
+        const instance = new componentType(...args);
         const sub_id = this.stateMessenger.subscribe(
             instance.onGlobalStateChange.bind(instance),
             instance.stateChangePriority()

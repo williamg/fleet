@@ -16,6 +16,10 @@ export const MAP = [
     [-4, 3], [4, -2], [-4, 2], [-2, 3],
     [3, -1], [3, -2], [2, -3], [4, -1]
 ];
+export const MAP_COORDS =
+    MAP.map<Vec2>(([a, b]: [number, number]) => {
+        return new Vec2(a, b);
+    });
 /**
  * Directions of neighbors
  * @type {Array}

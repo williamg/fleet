@@ -2,17 +2,30 @@
  * @file client/js/DesktopInterface.js
  */
 
+import { Hex } from "./Hex"
+import { UIState, InfoState } from "./UIState"
 import { Canvas } from "../Canvas"
 import { UserInterface } from "../UserInterface"
-import { TURN_TIMEOUT, GameState } from "../../../game/Game"
+import { TURN_TIMEOUT } from "../../../game/Game"
+import { GlobalState } from "../../../game/GlobalState"
 import { Action, ActionType } from "../../../game/Action"
 import { Vec2 } from "../../../game/Math"
 import { HexGrid, hexRound } from "../../../game/HexGrid"
-import { Hex } from "./Hex"
-import { PlayerID, ActionCB } from "../../../game/Player"
-import { UIState, InfoState } from "./UIState"
+import { PlayerID, ActionCB, EndTurnCB } from "../../../game/Player"
 import { Entity, EntityID } from "../../../game/Entity"
-import { HexPosition, Health, Charge, Movement, Pilot, ItemInfo, Cooldown, Items } from "../../../game/Components"
+import { ASSERT } from "../../../game/util"
+
+/* Components for displaying stats */
+import { Health } from "../../../game/components/Health"
+import { Charge } from "../../../game/components/Charge"
+import { Pilot } from "../../../game/components/Pilot"
+import { Item } from "../../../game/components/Item"
+import { Deployable } from "../../../game/components/Deployable"
+import { Movement, Position } from "../../../game/components/Positioning"
+import { ShipInfo } from "../../../game/components/ShipInfo"
+
+
+let last_hanger_render = 0;
 
 function setText(id: string, text: string) {
     document.getElementById(id)!.innerHTML = text;
@@ -22,7 +35,8 @@ function showInfo(entity: Entity) {
     const health = entity.getComponent(Health);
     const charge = entity.getComponent(Charge);
     const movement = entity.getComponent(Movement);
-    const items = entity.getComponent(Items);
+    const deployable = entity.getComponent(Deployable)
+    const items = entity.getComponents(Item);
     const pilot = entity.getComponent(Pilot);
 
     if (health != null) {
@@ -33,14 +47,16 @@ function showInfo(entity: Entity) {
 
     if (charge != null) {
         setText("charge", charge.current_charge.toString() + "/" + charge.max_charge.toString());
-        setText("recharge", charge.recharge.toString());
+        setText("recharge", charge.recharge.value().toString());
     } else {
         setText("charge", "N/A");
         setText("recharge", "N/A");
     }
 
     if (movement != null) {
-        setText("move_cost", movement.charge_per_tile.toString());
+        setText("move_cost", movement.move_cost.value().toString());
+    } else if (deployable != null){
+        setText("move_cost", deployable.deploy_cost.value().toString());
     } else {
         setText("move_cost", "N/A");
     }
@@ -60,15 +76,7 @@ function showInfo(entity: Entity) {
     displayItems(items);
 }
 
-function displayItems(items: Items | null) {
-    let item_ids: (EntityID | null)[];
-
-    if (items == null) {
-        item_ids = [];
-    } else {
-        item_ids = items.items;
-    }
-
+function displayItems(items: Item[]) {
     /* Display items */
     for(let i = 1; i <= 3; ++i) {
         const string = "item" + (i - 1).toString();
@@ -76,33 +84,23 @@ function displayItems(items: Items | null) {
         let desc = "";
         let btn = "";
 
-        if (item_ids.length < i) {
+        if (items.length < i) {
             /* Item slot isn't available */
             name = "(Unavailable)";
             desc = "N/A";
             btn = "N/A";
-        } else if (item_ids[i-1] == null) {
-            /* Item slot isn't used */
-            name = "(Empty)";
-            desc = "N/A";
-            btn = "N/A";
         } else {
-            const item = Entity.getEntity(item_ids[i-1]!);
-            console.assert(item != null);
+            name = items[i].name;
+            desc = items[i].description;
 
-            const info = item!.getComponent(ItemInfo);
-            console.assert(info != null);
-
-            name = info!.name;
-            desc = info!.description;
-
-            const cd = item!.getComponent(Cooldown);
-
-            if (cd != null) {
-                btn = cd.remaining.toString();
+            if (items[i].cooldown_remaining > 0) {
+                btn = items[i].cooldown_remaining.toString();
             } else {
-                btn = `Use (${info!.cost})`;
+                btn = `Use (${items[i].cost})`;
             }
+
+            const elem = document.getElementById(string)!;
+            elem.setAttribute("item-id", items[i].id.toString());
         }
 
         setText(string + "-name", name);
@@ -110,7 +108,6 @@ function displayItems(items: Items | null) {
         setText(string, btn);
     }
  }
-
 
 /**
  * Defines a user interface for traditional desktop web browsers.
@@ -133,9 +130,9 @@ export class DesktopInterface extends UserInterface {
     private mouse: Vec2;
     /**
      * Current game state
-     * @type {GameState}
+     * @type {GlobalState}
      */
-    private state: GameState;
+    private state: GlobalState;
     /**
      * Grid containing the state of each hex
      * @type {HexGrid<Hex>}
@@ -151,8 +148,9 @@ export class DesktopInterface extends UserInterface {
      */
     private selected: Entity | null;
 
-    constructor(state: GameState, friendly: PlayerID, action_cb: ActionCB) {
-        super(action_cb);
+    constructor(friendly: PlayerID, globalState: GlobalState,
+                actionFn: ActionCB, endTurnFn: EndTurnCB) {
+        super();
 
         this.friendly = friendly;
         this.canvas = new Canvas(document.getElementById("canvas_wrapper")!, 1920, 1080);
@@ -167,7 +165,7 @@ export class DesktopInterface extends UserInterface {
         }
 
         /* Set initial state */
-        this.state = state;
+        this.state = globalState;
 
         /* Create UI grid */
         this.uigrid = new HexGrid<Hex>((pos) => {
@@ -185,7 +183,8 @@ export class DesktopInterface extends UserInterface {
 
         /* Populate hanger */
         const callbacks = {
-             reportAction: action_cb,
+             reportAction: actionFn,
+             endTurn: endTurnFn,
              setSelected: this.setSelected.bind(this),
              transition: this.transition.bind(this),
              getSelected: this.getSelected.bind(this),
@@ -198,9 +197,9 @@ export class DesktopInterface extends UserInterface {
      /**
       * @see UserInterface
       */
-     setState(state: GameState): void {
+     update(state: GlobalState): void {
         this.state = state;
-        this.uiState.setState(this.state);
+        this.uiState.update(this.state);
      }
      /**
       * @see UserInterface
@@ -214,14 +213,32 @@ export class DesktopInterface extends UserInterface {
             hex.render(timestamp, this.canvas);
         }
 
+        /* Clear hanger */
+        let rendering_hanger = false;
+        let hanger;
+        if (last_hanger_render == 0 || timestamp - last_hanger_render > 1000) {
+            hanger = document.getElementById("hanger")!;
+            rendering_hanger = true;
+            last_hanger_render = timestamp;
+
+            while (hanger.hasChildNodes()) hanger.removeChild(hanger.lastChild!);
+        }
+
         /* Render entities */
         for (let entity of Entity.all()) {
-            const position = entity.getComponent(HexPosition);
+            const position = entity.getComponent(Position);
+            const info = entity.getComponent(ShipInfo)!;
 
-            /* Skip hanger ships for now */
-            if (position == null) continue;
-
-            this.uigrid.at(position.position)!.renderEntity(entity, this.canvas);
+            if (position == null && rendering_hanger) {
+                const li = document.createElement("li");
+                li.innerHTML = info.name;
+                li.onclick = (e) => {
+                    this.uiState.hangerShipClicked(entity.id);
+                }
+                li.id = entity.id.toString();
+                hanger!.appendChild(li);
+            } else {
+            }
         }
 
         const elapsed = Date.now() - this.state.turn_start;
@@ -256,7 +273,7 @@ export class DesktopInterface extends UserInterface {
      private clearSelected(): void {
          if (this.selected == null) return;
 
-         const position = this.selected.getComponent(HexPosition);
+         const position = this.selected.getComponent(Position);
 
          if (position == null) {
             const id = "ship" + this.selected.id.toString();
@@ -279,9 +296,11 @@ export class DesktopInterface extends UserInterface {
 
         if (this.selected == null) return;
 
-        const position = this.selected.getComponent(HexPosition);
+        const position = this.selected.getComponent(Position);
 
         if (position == null) {
+            document.getElementById(this.selected.id.toString())!
+                    .classList.add("selected");
         } else {
             this.uigrid.at(position.position)!.setRenderStyle("selected");
         }

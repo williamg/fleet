@@ -52,70 +52,43 @@ table {
 	border-spacing: 0;
 }
 
-#canvas_wrapper {
-    float: left;
-    width: 100%;
-    height: calc(100% - 297px);
-}
-
-#turn {
-	width: 100px;
-	margin-left: calc(50% - 100px);
-	margin-bottom: 10px;
-	border-left: 10px solid #000;
-}
-
-#timer {
-	line-height: 33px;
-	padding: 10px;
-}
-
-#timer:before {
-	content: "Time remaining: ";
-}
-
-#hud_wrapper {
-    float: left;
-    width: 100%;
-    height: 244px;
-    padding-top: 10px;
-}
-
-#hud {
-    float: left;
-    height: 244px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
+#wrapper {
+	max-width: 1400px;
+	margin: auto;
 }
 
 #hanger_list {
-    width: 216px;
-    height: 216px;
-    padding: 10px;
+	float: left;
+    width: 256px;
+    height: calc(100% - 268px);
     border: 2px solid #FFFFFF;
     margin-right: 10px;
+	margin-bottom: 10px;
+}
+
+#hanger_list .header {
+	padding-left: 20px;
+	padding-top: 20px;
+	width: calc(100% - 20px);
 }
 
 #hanger_list ul {
     float: left;
     width: 100%;
-    height: 140px;
-    overflow-y: scroll;
+    height: calc(100% - 115px);
+    overflow-y: auto;
     margin-bottom: 10px;
 }
 
 #hanger_list ul li {
     display: block;
-    width: calc(100% - 20px);
+    width: calc(100% - 40px);
     float: left;
-    padding: 10px;
+    padding: 10px 20px 10px 20px;
 }
 
 #hanger_list ul li:hover {
-    color: #0033FF;
-	background-color: rgba(255, 255, 255, 0.5);
+	background-color: rgba(255, 255, 255, 0.2);
 	cursor: pointer;
 }
 
@@ -124,19 +97,69 @@ table {
     background-color: #0033FF;
 }
 
+#hanger_list .button-wrapper {
+	float: left;
+	padding: 0px 20px 0px 20px;
+	width: calc(100% - 40px);
+}
+
+#canvas_wrapper {
+    float: left;
+    width: calc(100% - 270px);
+    height: calc(100% - 310px);
+	margin-bottom: 10px;
+}
+
+#status-effects {
+	float: left;
+	height: 35px;
+	width: calc(100% - 570px);
+	margin-right: 20px;
+}
+
+#timer {
+	float: right;
+	line-height: 35px;
+	margin-bottom: 10px;
+	margin-right: 10px;
+}
+
+#turn {
+	float: right;
+	width: 100px;
+	margin-bottom: 10px;
+}
+
+
+
+#timer:before {
+	content: "Time remaining: ";
+}
+
+#hud {
+    float: left;
+    height: 244px;
+    width: 100%;
+    display: flex;
+    justify-content: left;
+    align-items: flex-start;
+}
+
 .header {
     float: left;
     font-size: 19px;
     font-weight: bold;
     margin-bottom: 10px;
     width: 100%;
+	height: 20px;
 }
 
 button {
     float: left;
     background-color: #0033FF;
     padding: 10px;
-    width: calc(100% - 20px);
+    width: 100%;
+	height: 35px;
     text-align: center;
 	border: none;
 	color: #FFF;
@@ -154,19 +177,31 @@ button:disabled:hover {
 	cursor: default;
 }
 
-#ship_info {
-    vertical-align: top;
-    width: 1000px;
-    height: 216px;
+
+#square {
+	vertical-align: top;
+	width: 236px;
+	height: 236px;
     border: 2px solid #FFFFFF;
-    padding: 10px;
+	padding: 10px;
+	margin-right: 10px;
 }
 
+#ship_info {
+    vertical-align: top;
+    width: calc(100% - 314px);
+    height: 216px;
+    border: 2px solid #FFFFFF;
+    padding: 20px;
+}
 
 #stats {
     float: left;
-    width: 350px;
-    height: 216px;
+    width: 250px;
+    height: 100%;
+	padding-right: 20px;
+	border-right: 2px solid #666;
+	margin-right: 20px;
 }
 
 .stat {
@@ -187,14 +222,19 @@ button:disabled:hover {
 }
 
 .stat.ship {
-    width: 94px;
-    margin-left: calc((100% - 240px) / 3);
+    width: 100px;
+}
+
+.stat.ship:nth-child(2n+1) {
+    margin-left: calc(100% - 200px);
 }
 
 .stat.pilot {
-    width: calc(33% - 26px);
-    margin-left: calc((100% - 300px) / 4);
-	margin-bottom: 30px;
+    width: calc(33%);
+}
+
+#move {
+	margin-top: 20px;
 }
 
 #pilot-name {
@@ -203,23 +243,32 @@ button:disabled:hover {
 
 #items {
     float: left;
-    width: 650px;
+    width: calc(100% - 292px);
     height: 216px;
+	display: flex;
+	align-content: stretch;
 }
 
 .item {
-	height: 33%;
-	overflow: hidden;
+	flex-grow: 1;
+	flex-shrink: 1;
+	height: 100%;
+	margin-left: 20px;
+}
+
+.item:first-child {
+	margin-left: 0px;
 }
 
 .item p {
 	float: left;
 	display: inline-block;
-	width: calc(100% - 100px);
+	width: 100%;
 	font-family: "Arial", sans-serif;
+	height: calc(100% - 65px);
 }
 
 .item button {
 	float: left;
-	width: 100px;
+	width: 100%;
 }

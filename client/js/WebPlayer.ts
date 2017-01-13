@@ -1,11 +1,11 @@
 /**
  * @file client/js/WebPlayer.ts
  */
-
-import { Player, PlayerID, ActionCB } from "../../game/Player"
-import { GameState } from "../../game/Game"
 import { UserInterface } from "./UserInterface"
 import { DesktopInterface } from "./desktop/DesktopInterface"
+import { Player, PlayerID, ActionCB, EndTurnCB } from "../../game/Player"
+import { GlobalState } from "../../game/GlobalState"
+import { ASSERT } from "../../game/util"
 
 export class WebPlayer extends Player {
     private ui: UserInterface | null;
@@ -14,14 +14,15 @@ export class WebPlayer extends Player {
         super("Web Player");
     }
 
-    init(id: PlayerID, state: GameState, action_cb: ActionCB): void {
-        this.ui = new DesktopInterface(state, id, action_cb);
+    init(id: PlayerID, state: GlobalState, actionFn: ActionCB,
+         endTurnFn: EndTurnCB): void {
+        this.ui = new DesktopInterface(id, state, actionFn, endTurnFn);
         this.ui.startRenderLoop();
     }
 
-    setState(state: GameState): void {
-        console.assert(this.ui != null);
+    update(state: GlobalState): void {
+        ASSERT(this.ui != null);
 
-        this.ui!.setState(state);
+        this.ui!.update(state);
     }
 }

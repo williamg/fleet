@@ -16,14 +16,19 @@ export class Item extends Component {
     private static _next_id = 0;
 
     readonly id: ItemID = Item._next_id++;
+    readonly name: string;
+    readonly description: string;
     readonly charge: Charge | null;
     cooldown: number;
     cooldown_remaining: number;
     cost: number;
 
-    constructor(entity: Entity, cooldown: number, cost?: [number, Charge]) {
+    constructor(entity: Entity, name: string, desc: string, cooldown: number,
+                cost?: [number, Charge]) {
         super(entity);
 
+        this.name = name;
+        this.description = desc;
         this.cooldown = cooldown;
         this.cooldown_remaining = 0;
 
@@ -56,7 +61,13 @@ export class Item extends Component {
 
         if (target == null && filter != null) return false;
         if (target != null && filter == null) return false;
-        if (filter != null && !filter.matches(target!)) return false;
+
+        if (filter != null && target != null) {
+            const entity = Entity.getEntity(target);
+
+            if (entity == null) return false;
+            if (!filter.matches(entity)) return false;
+        }
 
         if (this._use(target)) {
             if (this.cost > 0) {
@@ -74,7 +85,7 @@ export class Item extends Component {
      * @return {Filter<EntityID>| null} Valid target filter or null if no target
      *                                  required
      */
-    targetFilter(): Filter<EntityID> | null { return null; }
+    targetFilter(): Filter<Entity> | null { return null; }
     /**
      * Item-specific implementation. Can assume that:
      * - Item is off cooldown

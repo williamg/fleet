@@ -69,7 +69,7 @@ class CombinationFilter<T> extends Filter<T> {
         const bSet = new Set<T>(this._b.filter(vals));
 
         /* Compute union */
-        const union = aSet;
+        const union = new Set<T>(aSet);
         for (const elem of bSet) {
             union.add(elem);
         }

@@ -6,15 +6,15 @@ import { Component } from "../Component"
 import { Filter } from "../Filter"
 
 export class HasComponent<T extends Component> extends Filter<Entity> {
-    private readonly _component: ComponentConstructor[];
+    private readonly _component: { new (...args: any[]): T; };
 
-    constructor(components: { new (...args: any[]): T; }) {
+    constructor(component: { new (...args: any[]): T; }) {
         super();
 
-        this._components = components;
+        this._component = component;
     }
 
     matches(val: Entity): boolean {
-        return (val.getComponent(component) != null);
+        return (val.getComponent(this._component) != null);
     }
 }

@@ -2,12 +2,12 @@
  * @file client/js/desktop/HexState.ts
  */
 
-import { Vec2 } from "../../../game/Math"
 import { Canvas, CanvasStyle } from "../Canvas"
-import { GameState } from "../../../game/Game"
-import { PlayerID } from "../../../game/Player"
 import { Entity, EntityID } from "../../../game/Entity"
-import { Team, Health, Charge, Pilot } from "../../../game/Components"
+import { GlobalState } from "../../../game/GlobalState"
+import { Vec2 } from "../../../game/Math"
+import { PlayerID } from "../../../game/Player"
+import { Team } from "../../../game/components/Team"
 
 /**
  * Renders the logic for rendering a single hexagon tile to the screen
@@ -61,13 +61,13 @@ export class Hex {
      * Most recent game state
      * @type {GameState}
      */
-    private state: GameState;
+    private state: GlobalState;
     /**
      * Render style
      */
     private render_style: "normal" | "target" | "selected";
 
-    constructor(hex_pos: Vec2, friendly: PlayerID, state: GameState) {
+    constructor(hex_pos: Vec2, friendly: PlayerID, state: GlobalState) {
         this.hex_pos = hex_pos;
         this.friendly = friendly;
         this.render_style = "normal";
@@ -119,7 +119,7 @@ export class Hex {
 
         canvas.drawPath(this.border);
     }
-
+/*
     renderEntity(entity: Entity, canvas: Canvas) {
         const team = entity.getComponent(Team);
         if (team == null) {
@@ -144,7 +144,6 @@ export class Hex {
         const health = entity.getComponent(Health);
 
         if (health != null) {
-            /* Draw health bar */
             let health_style = new CanvasStyle("green", "green", 0);
             const health_percent = health.current_health / health.max_health;
             const health_verts = this.statusArc(2, 3, 4, health_percent);
@@ -187,5 +186,5 @@ export class Hex {
 
             verts = verts.concat([outer, inner]);
             return verts;
-    }
+    }*/
 }
