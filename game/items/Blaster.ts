@@ -3,14 +3,12 @@
  */
 
 import { GameState } from "../Game";
+import { DamageEffect } from "../effects/DamageEffect";
+import { ItemInfo, ItemEffect, TargetFilter, Team } from "../Components"
+import { Entity, EntityID } from "../Entity"
 import { Player } from "../Player"
-import { Damage } from "../Damage";
-import { Ship } from "../Ship";
-import { ShipItem } from "../ShipItem"
-import { Action, ActionType } from "../Action";
 import { Vec2 } from "../Math";
-import { EntityType } from "../GridEntity"
-import { TargetDescription, targetInRange, targetHasPlayer } from "../Target";
+import { itemSystem } from "../systems/ItemSystem"
 
 const BLASTER_COOLDOWN = 0;
 const BLASTER_RANGE    = 2;
@@ -24,61 +22,25 @@ const BLASTER_DESC     = `Inflicts ${BLASTER_DAMAGE} (${BLASTER_CRIT}) damage on
 /**
  * A blaster is a short-ranged targeted weapon.
  */
- export class Blaster extends ShipItem {
-     private ship: Ship | null;
+export function newBlaster(ship: Entity): Entity | null {
+    const team = ship.getComponent(Team);
 
-     constructor() {
-         super(BLASTER_NAME, BLASTER_DESC, BLASTER_COST, BLASTER_COOLDOWN);
-     }
-     /**
-      * @see ShipItem.ts
-      */
-     handleEquip(ship: Ship): boolean {
-         if (!super.handleEquip(ship)) {
-             return false;
-         }
+    if (team == null) return null;
 
-         this.ship = ship;
-         return true;
-     }
-     /**
-      * @see ShipItem.ts
-      */
-     handleUnequip(ship: Ship): void {
-         super.handleUnequip(ship);
-         this.ship = null;
-     }
-     /**
-      * @see ShipItem.ts
-      */
-     targetRequired(): TargetDescription | null {
-        return new TargetDescription([
-            targetInRange(this.ship!.position, BLASTER_RANGE),
-            targetHasPlayer(Player.other(this.ship!.player))
-        ]);
-     }
-     /**
-      * @see ShipItem.ts
-      */
-     _use(target: Vec2 | null, state: GameState): boolean {
-         if (target == null) return false;
+    const blaster = new Entity();
+    const id = blaster.id;
+    blaster.addComponent(ItemInfo, id, BLASTER_NAME, BLASTER_DESC,
+                         BLASTER_COOLDOWN, ship.id);
+    blaster.addComponent(TargetFilter, id, {
+        in_range_of_entity: [ship.id, BLASTER_RANGE],
+        on_team: Player.other(team.team),
+    });
+    blaster.addComponent(DamageEffect, id, ship.id, BLASTER_DAMAGE);
 
-         if (this.ship == null) return false;
-         if (this.ship.position == null) return false;
+    if (itemSystem.equip(id, ship.id)) return blaster;
 
-         /* TODO: Validate action */
-         const victim = state.grid.at(target);
+    blaster.destroy();
+    return null;
 
-         if (victim == null || victim.type != EntityType.SHIP) return true;
-         if (victim.player == this.ship.player) return true;
 
-         const damage = Damage.fromCombat(this.ship, victim as Ship, BLASTER_DAMAGE);
-
-         if (damage != null) {
-             this.ship.inflictDamage(damage);
-         }
-
-         return true;
-     }
-
- }
+}

@@ -6,20 +6,17 @@ import { GameState } from "../../../game/Game"
 import { Vec2 } from "../../../game/Math"
 import { PlayerID } from "../../../game/Player"
 import { Move, Deploy, EndTurn, Activate, Action, ActionType } from "../../../game/Action"
-import { Ship, ShipInfo } from "../../../game/Ship"
-import { ShipItem } from "../../../game/ShipItem"
-import { TargetDescription, targetIsOneOf, targetReachable, targetIsDeployable } from "../../../game/Target"
 import { Hex } from "./Hex"
+import { HexPosition } from "../../../game/Components"
 import { HexGrid } from "../../../game/HexGrid"
-import { GridEntity, EntityID, EntityType } from "../../../game/GridEntity"
+import { Entity, EntityID } from "../../../game/Entity"
+import { movementSystem } from "../../../game/systems/MovementSystem"
 
 export interface UICallbacks {
-    report_action: (action: Action) => void;
-    set_ship_selected: (ship: Ship) => void;
-    set_hanger_selected: (index: number) => void;
+    reportAction: (action: Action) => void;
+    setSelected: (entity: Entity | null) => void;
     transition: (state: UIState) => void;
-    get_selected_ship: () => Ship | null;
-    get_selected_hanger_ship: () => number | null;
+    getSelected: () => Entity | null;
 };
 
 /**
@@ -107,18 +104,21 @@ export class OpponentState extends UIState {
      * @param  {Vec2}      hex   Hex to display
      */
     hexClicked(hex: Vec2): void {
-        const entity = this.state.grid.at(hex);
+        for (let entity of Entity.all()) {
+            const position = entity.getComponent(HexPosition);
 
-        if (entity == null || entity.type != EntityType.SHIP) return;
-
-        this.callbacks.set_ship_selected(entity as Ship);
+            if (position != null && hex.equals(position.position)) {
+                this.callbacks.setSelected(entity);
+                return;
+            }
+        }
     }
     /**
      * Display info for the selected hanger ship
      * @param {number} index Index of the hanger ship
      */
-    hangerShipClicked(index: number): void {
-        this.callbacks.set_hanger_selected(index);
+    hangerShipClicked(id: number): void {
+        this.callbacks.setSelected(Entity.getEntity(id));
     }
     /**
      * Transition to the info state when it is no longer the opponent's turn
@@ -144,14 +144,11 @@ export class InfoState extends UIState {
      */
     enter(): void {
         this.move_btn.onclick = (e) => {
-            const ship = this.callbacks.get_selected_ship()!;
-            const range = Math.floor(ship.charge.current / ship.move_cost.value());
-            const desc = new TargetDescription([
-                targetReachable(ship.position, range)
-            ]);
+            const ent = this.callbacks.getSelected()!;
+            const targets = movementSystem.validTargets(ent.id);
 
             function make_move(dest: Vec2) {
-                this.callbacks.report_action(new Move(ship.id, dest));
+                this.callbacks.report_action(new Move(ent.id, dest));
             }
 
             this.callbacks.transition(new TargetingState(this.friendly, this.state,

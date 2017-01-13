@@ -6,7 +6,8 @@
 import { Component, Entity, EntityID } from "./Entity"
 import { Vec2 } from "./Math"
 import { PlayerID } from "./Player"
-import { Damage } from "./Damage"
+import { Damage } from "./systems/CombatSystem"
+import { Attribute } from "./Attribute"
 import { TimeoutFn } from "./systems/TimeoutWatcher"
 
 export class HexPosition extends Component {
@@ -20,26 +21,38 @@ export class HexPosition extends Component {
 }
 
 export class Movement extends Component {
-    charge_per_tile: number;
+    charge_per_tile: Attribute;
 
     constructor(entity_id: EntityID, charge_per_tile: number) {
         super(entity_id);
 
-        this.charge_per_tile = charge_per_tile;
+        this.charge_per_tile = new Attribute(0, Infinity, charge_per_tile);
     }
 }
 
 export class Charge extends Component {
     max_charge: number;
-    recharge: number;
+    recharge: Attribute;
     current_charge: number;
 
     constructor(entity_id: EntityID, max_charge: number, recharge: number) {
         super(entity_id);
 
         this.max_charge = max_charge;
-        this.recharge = recharge;
         this.current_charge = max_charge;
+        this.recharge = new Attribute(0, max_charge, recharge);
+    }
+}
+
+export class Health extends Component {
+    max_health: number;
+    current_health: number;
+
+    constructor(entity_id: EntityID, max_health: number) {
+        super(entity_id);
+
+        this.max_health = max_health;
+        this.current_health = max_health;
     }
 }
 
@@ -65,18 +78,18 @@ export class Size extends Component {
 
 export class Pilot extends Component {
     name: string;
-    evasion: number;
-    accuracy: number;
-    precision: number;
+    evasion: Attribute;
+    accuracy: Attribute;
+    precision: Attribute;
 
     constructor(entity_id: EntityID, name: string, evasion: number,
                 accuracy: number, precision: number) {
         super(entity_id);
 
         this.name = name;
-        this.evasion = evasion;
-        this.accuracy = accuracy;
-        this.precision = precision;
+        this.evasion = new Attribute(0, Infinity, evasion);
+        this.accuracy = new Attribute(0, Infinity, accuracy);
+        this.precision = new Attribute(0, Infinity, precision);
     }
 }
 
@@ -93,6 +106,22 @@ export class DeployZone extends Component {
 }
 
 /** Items */
+export class Items extends Component {
+    num_slots: number;
+    items: (EntityID | null)[];
+
+    constructor(entity_id: EntityID, num_slots: number) {
+        super(entity_id);
+
+        this.num_slots = num_slots;
+        this.items = new Array(num_slots);
+
+        for (let i = 0; i < this.items.length; ++i) {
+            this.items[i] = null;
+        }
+    }
+}
+
 
 export class ItemInfo extends Component {
     name: string;
@@ -113,14 +142,14 @@ export class ItemInfo extends Component {
     }
 }
 
-export type Attribute =
+export type AttributeName =
     "move_cost" | "recharge" | "evasion" | "precision" | "accuracy";
 
 export interface EntityFilter {
     one_of: EntityID[];
     in_range_of_entity: [EntityID, number];
     on_team: PlayerID;
-    has_attributes: Attribute[];
+    has_attributes: AttributeName[];
 }
 
 export type PartialFilter = { [P in keyof EntityFilter]?: EntityFilter[P] }
@@ -136,12 +165,21 @@ export class TargetFilter extends Component {
 }
 
 export class ItemEffect extends Component {
-    duration: number;
-    apply: (target: Entity) => void;
+    constructor(entity_id) {
+        super(entity_id);
+    }
+
+    apply(target: Entity): void {}
+}
+
+export class DamageModifier extends Component {
+    priority: number;
 
     constructor(entity_id) {
         super(entity_id);
     }
+
+    apply(damage: Damage): void {}
 }
 
 export class Cooldown extends Component {

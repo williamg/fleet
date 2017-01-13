@@ -1,25 +1,17 @@
 /**
  * @file game/Damage.ts
  */
-
-import { Entity } from "./Entity"
+import { EntityID } from "./Entity"
 
 export enum DamageResult {
     NORMAL,
     CRIT,
 };
 
-export class Damage {
-    source: number;
-    target: number;
+export interface Damage {
+    readonly source: EntityID;
+    readonly target: EntityID;
+    readonly source_type: "ship" | "status efect";
     result: DamageResult;
     amount: number;
-
-    constructor(source: number, target: number, result: DamageResult,
-                amount: number) {
-        this.source = source;
-        this.result = result;
-        this.amount = amount;
-        this.target = target;
-    }
-}
+};

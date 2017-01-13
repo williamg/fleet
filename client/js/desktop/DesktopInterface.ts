@@ -7,51 +7,68 @@ import { UserInterface } from "../UserInterface"
 import { TURN_TIMEOUT, GameState } from "../../../game/Game"
 import { Action, ActionType } from "../../../game/Action"
 import { Vec2 } from "../../../game/Math"
-import { HexGrid, hex_round } from "../../../game/HexGrid"
+import { HexGrid, hexRound } from "../../../game/HexGrid"
 import { Hex } from "./Hex"
-import { Ship, ShipInfo } from "../../../game/Ship"
-import { ShipItem } from "../../../game/ShipItem"
 import { PlayerID, ActionCB } from "../../../game/Player"
 import { UIState, InfoState } from "./UIState"
+import { Entity, EntityID } from "../../../game/Entity"
+import { HexPosition, Health, Charge, Movement, Pilot, ItemInfo, Cooldown, Items } from "../../../game/Components"
 
 function setText(id: string, text: string) {
     document.getElementById(id)!.innerHTML = text;
 }
 
-function showInfo(ship: Ship | ShipInfo) {
+function showInfo(entity: Entity) {
+    const health = entity.getComponent(Health);
+    const charge = entity.getComponent(Charge);
+    const movement = entity.getComponent(Movement);
+    const items = entity.getComponent(Items);
+    const pilot = entity.getComponent(Pilot);
 
-    let recharge, move_cost, charge, max_charge, health, max_health;
-
-    if (ship instanceof Ship) {
-        recharge = ship.recharge.value();
-        move_cost = ship.move_cost.value();
-        charge = ship.charge.current;
-        max_charge = ship.charge.max;
-        health = ship.health.current;
-        max_health = ship.health.max;
+    if (health != null) {
+        setText("health", health.current_health.toString() + "/" + health.max_health.toString());
     } else {
-        recharge = ship.class.recharge;
-        move_cost = ship.class.move_cost;
-        charge = ship.class.max_charge;
-        max_charge = ship.class.max_charge;
-        health = ship.class.max_health;
-        max_health = ship.class.max_health;
+        setText("health", "N/A");
     }
 
-    setText("ship-name", ship.name);
-    setText("energy", charge.toString() + "/" + max_charge.toString());
-    setText("health", health.toString() + "/" + max_health.toString());
-    setText("recharge", recharge.toString());
-    setText("move_cost", move_cost.toString());
-    setText("pilot-name", ship.pilot.name);
-    setText("accuracy", ship.pilot.accuracy.value().toString());
-    setText("evasion", ship.pilot.evasion.value().toString());
-    setText("precision", ship.pilot.precision.value().toString());
+    if (charge != null) {
+        setText("charge", charge.current_charge.toString() + "/" + charge.max_charge.toString());
+        setText("recharge", charge.recharge.toString());
+    } else {
+        setText("charge", "N/A");
+        setText("recharge", "N/A");
+    }
 
-    displayItems(ship.items);
+    if (movement != null) {
+        setText("move_cost", movement.charge_per_tile.toString());
+    } else {
+        setText("move_cost", "N/A");
+    }
+
+    if (pilot != null) {
+        setText("pilot-name", pilot.name);
+        setText("accuracy", pilot.accuracy.value().toString());
+        setText("precision", pilot.precision.value().toString());
+        setText("evasion", pilot.evasion.value().toString());
+    } else {
+        setText("pilot-name", "N/A");
+        setText("accuracy", "N/A");
+        setText("precision", "N/A");
+        setText("evasion", "N/A");
+    }
+
+    displayItems(items);
 }
 
-function displayItems(items: ShipItem[]) {
+function displayItems(items: Items | null) {
+    let item_ids: (EntityID | null)[];
+
+    if (items == null) {
+        item_ids = [];
+    } else {
+        item_ids = items.items;
+    }
+
     /* Display items */
     for(let i = 1; i <= 3; ++i) {
         const string = "item" + (i - 1).toString();
@@ -59,24 +76,32 @@ function displayItems(items: ShipItem[]) {
         let desc = "";
         let btn = "";
 
-        if (items.length < i) {
+        if (item_ids.length < i) {
             /* Item slot isn't available */
             name = "(Unavailable)";
             desc = "N/A";
             btn = "N/A";
-        } else if (items[i-1] == null) {
+        } else if (item_ids[i-1] == null) {
             /* Item slot isn't used */
             name = "(Empty)";
             desc = "N/A";
             btn = "N/A";
         } else {
-            name = items[i-1]!.name;
-            desc = items[i-1]!.description;
+            const item = Entity.getEntity(item_ids[i-1]!);
+            console.assert(item != null);
 
-            if (items[i-1]!.cooldown_remaining > 0) {
-                btn = items[i-1]!.cooldown_remaining.toString();
+            const info = item!.getComponent(ItemInfo);
+            console.assert(info != null);
+
+            name = info!.name;
+            desc = info!.description;
+
+            const cd = item!.getComponent(Cooldown);
+
+            if (cd != null) {
+                btn = cd.remaining.toString();
             } else {
-                btn = `Use (${items[i-1]!.energy_cost})`;
+                btn = `Use (${info!.cost})`;
             }
         }
 
@@ -122,22 +147,16 @@ export class DesktopInterface extends UserInterface {
      */
     private uiState: UIState;
     /**
-     * Currently selected ship
+     * Currently selected entity
      */
-    private ship_selected: Ship | null;
-    /**
-     * Currently selected ship info
-     */
-     private hanger_selected: number | null;
-
+    private selected: Entity | null;
 
     constructor(state: GameState, friendly: PlayerID, action_cb: ActionCB) {
         super(action_cb);
 
         this.friendly = friendly;
         this.canvas = new Canvas(document.getElementById("canvas_wrapper")!, 1920, 1080);
-        this.ship_selected = null;
-        this.hanger_selected = null;
+        this.selected = null;
 
         /* Track cursor position */
         this.mouse = new Vec2(0, 0);
@@ -165,20 +184,11 @@ export class DesktopInterface extends UserInterface {
         }
 
         /* Populate hanger */
-        let [p1hanger, p2hanger] = this.state.hangers;
-        let hanger = p1hanger;
-
-        if (friendly == PlayerID.PLAYER_2) hanger = p2hanger;
-
-        this.renderHanger(hanger);
-
         const callbacks = {
-             report_action: action_cb,
-             set_ship_selected: this.set_ship_selected.bind(this),
-             set_hanger_selected: this.set_hanger_selected.bind(this),
+             reportAction: action_cb,
+             setSelected: this.setSelected.bind(this),
              transition: this.transition.bind(this),
-             get_selected_ship: this.get_selected_ship.bind(this),
-             get_selected_hanger_ship: this.get_selected_hanger_ship.bind(this)
+             getSelected: this.getSelected.bind(this),
         };
 
         this.uiState = new InfoState(this.friendly, this.state,
@@ -191,45 +201,6 @@ export class DesktopInterface extends UserInterface {
      setState(state: GameState): void {
         this.state = state;
         this.uiState.setState(this.state);
-
-         for (let [loc, hex] of this.uigrid.cells) {
-             hex.setState(this.state)
-         }
-
-         let [hanger, other] = state.hangers;
-         if (this.friendly == PlayerID.PLAYER_2) hanger = other;
-
-         this.renderHanger(hanger);
-
-     }
-     /**
-      * Render this player's hanger
-      * @param {ShipInfo[]} hanger List of ships in the hanger
-      */
-     renderHanger(hanger: ShipInfo[]): void {
-        const hangerul = document.getElementById("hanger")!;
-
-        /* Empty hanger */
-        while (hangerul.hasChildNodes()) {
-            hangerul.removeChild(hangerul.lastChild!);
-        }
-
-        for (let i = 0; i < hanger.length; ++i) {
-            let li = document.createElement("li");
-            li.classList.add("hanger-ship");
-            li.id = "ship" + i.toString();
-            li.innerHTML = hanger[i].name;
-
-            if (this.hanger_selected != null && this.hanger_selected == i) {
-                li.classList.add("selected");
-            }
-
-            li.onclick = (e) => {
-                this.uiState.hangerShipClicked(i);
-            }
-
-            hangerul.appendChild(li);
-        }
      }
      /**
       * @see UserInterface
@@ -237,12 +208,20 @@ export class DesktopInterface extends UserInterface {
      render(timestamp: number): void {
         /* Update UI */
         this.uiState.render(this.canvas);
-
-         if (this.ship_selected) this.set_ship_selected(this.ship_selected);
-         else if (this.hanger_selected) this.set_hanger_selected(this.hanger_selected);
+        this.setSelected(this.selected);
 
         for (let [loc, hex] of this.uigrid.cells) {
             hex.render(timestamp, this.canvas);
+        }
+
+        /* Render entities */
+        for (let entity of Entity.all()) {
+            const position = entity.getComponent(HexPosition);
+
+            /* Skip hanger ships for now */
+            if (position == null) continue;
+
+            this.uigrid.at(position.position)!.renderEntity(entity, this.canvas);
         }
 
         const elapsed = Date.now() - this.state.turn_start;
@@ -267,45 +246,47 @@ export class DesktopInterface extends UserInterface {
         const hex_x = canvas_coord.x * (2.0 / 3.0) / Hex.SIZE;
         const hex_y = ((-canvas_coord.x / 3.0) +
                       ((Math.sqrt(3) / 3.0) * canvas_coord.y)) / Hex.SIZE;
-        const hex_coord = hex_round(new Vec2(hex_x, hex_y));
+        const hex_coord = hexRound(new Vec2(hex_x, hex_y));
 
-        if (this.state.grid.inBounds(hex_coord)) return hex_coord;
+        if (this.uigrid.inBounds(hex_coord)) return hex_coord;
 
         return null;
      }
 
-     private clear_selected(): void {
-         if (this.hanger_selected != null) {
-            const id = "ship" + this.hanger_selected.toString();
+     private clearSelected(): void {
+         if (this.selected == null) return;
+
+         const position = this.selected.getComponent(HexPosition);
+
+         if (position == null) {
+            const id = "ship" + this.selected.id.toString();
             let ship = document.getElementById(id);
 
             if (ship != null) {
                 ship.classList.remove("selected");
             }
+        } else {
+            this.uigrid.at(position.position)!.setRenderStyle("normal");
         }
 
-        if (this.ship_selected != null) {
-            this.uigrid.at(this.ship_selected.position)!.setRenderStyle("normal");
+        this.selected = null;
+     }
+
+    private setSelected(entity: Entity | null): void {
+        this.clearSelected();
+
+        this.selected = entity;
+
+        if (this.selected == null) return;
+
+        const position = this.selected.getComponent(HexPosition);
+
+        if (position == null) {
+        } else {
+            this.uigrid.at(position.position)!.setRenderStyle("selected");
         }
 
-        this.ship_selected = null;
-        this.hanger_selected = null;
-     }
-
-    private set_ship_selected(ship: Ship): void {
-        this.clear_selected();
-
-        this.ship_selected = ship;
-        this.uigrid.at(ship.position)!.setRenderStyle("selected");
-        showInfo(ship);
-     }
-
-    private set_hanger_selected(index: number): void {
-        this.clear_selected();
-
-        this.hanger_selected = index;
-        let ship = document.getElementById("ship" + index.toString())!;
-        ship.classList.add("selected");
+        showInfo(this.selected);
     }
 
      private transition(state: UIState): void {
@@ -314,11 +295,7 @@ export class DesktopInterface extends UserInterface {
          this.uiState.enter();
      }
 
-     private get_selected_ship(): Ship | null {
-         return this.ship_selected;
-     }
-
-     private get_selected_hanger_ship(): number | null {
-         return this.hanger_selected;
+     private getSelected(): Entity | null {
+         return this.selected;
      }
  }

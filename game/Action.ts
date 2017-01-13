@@ -1,14 +1,9 @@
 /**
  * @file game/Action.ts
  */
-
-import { Vec2, hexDist } from "./Math"
-import { GameState } from "./Game"
-import { EntityType, EntityID } from "./GridEntity"
-import { Ship } from "./Ship"
-import { TargetDescription } from "./Target"
-import { Player, PlayerID } from "./Player"
-import { DeployPad } from "./DeployPad"
+import { Entity, EntityID } from "./Entity"
+import { Vec2 } from "./Math"
+import { Movement } from "./components/Positioning"
 
 /**
  * Type of action
@@ -20,8 +15,8 @@ export enum ActionType {
     END_TURN
 };
 /*
- * Actions are the fundamental building blocks of the game. Each player's turn
- * consists of performing some number of actions.
+ * Actions are the primary interface betwene player and game. Each player's turn
+ * consists exclusively of performing some number of actions.
  */
 export abstract class Action {
     /**
@@ -35,10 +30,9 @@ export abstract class Action {
     }
     /**
      * Execute an action
-     * @param  {GameState} state State to modify
      * @return {boolean}         Whether or not execution was successful
      */
-    abstract execute(state: GameState): boolean;
+    abstract execute(): boolean;
 };
 /**
  * Move an entity from one cell to another
@@ -62,20 +56,16 @@ export class Move extends Action {
         this._dest = dest;
     }
 
-    execute(state: GameState): boolean {
-        const entity = state.getEntity(this._id);
+    execute(): boolean {
+        const entity = Entity.getEntity(this._id);
 
-        if (entity == null || entity.type != EntityType.SHIP) return false;
+        if (entity == null) return false;
 
-        const ship = entity as Ship;
-        const old_pos = ship.position;
+        const movement_comp = entity.getComponent(Movement);
 
-        if (ship.move(this._dest)) {
-            state.grid.set(old_pos, null);
-            state.grid.set(ship.position, ship);
-        }
+        if (movement_comp == null) return false;
 
-        return true;
+        return movement_comp.moveTo(this._dest);
     }
 }
 /**
@@ -106,7 +96,7 @@ export class Activate extends Action {
         this._target = target;
     }
 
-    execute(state: GameState): boolean {
+    execute(): boolean {
         const entity = state.getEntity(this._id);
 
         if (entity == null || entity.type != EntityType.SHIP) return false;

@@ -5,34 +5,15 @@
 
 import { Vec2 } from "./Math"
 import { HexGrid } from "./HexGrid"
-import { GridEntity, EntityID } from "./GridEntity"
-import { ShipInfo, Ship, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
-import { ShipItem } from "./ShipItem"
+import { newShip, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
 import { Action, ActionType, EndTurn } from "./Action"
+import { HexPosition } from "./Components"
 import { Player, PlayerID } from "./Player"
-import { Pilot } from "./Pilot";
-import { DeployPad } from "./DeployPad"
+import { itemSystem } from "./systems/ItemSystem"
+import { timeoutWatcher } from "./systems/TimeoutWatcher"
 
 
-import { Blaster } from "./items/Blaster";
-import { SuicideBomb } from "./items/SuicideBomb";
-import { EagleEye } from "./items/EagleEye";
-
-function testShip1(): ShipInfo {
-    let pilot = new Pilot("Han Solo", [2, 2, 2]);
-    let items: ShipItem[] = [new Blaster(), new EagleEye()];
-    let ship = new ShipInfo("Falcon", PlayerID.PLAYER_1, Fighter, pilot, items);
-
-    return ship;
-}
-
-function testShip2(): ShipInfo {
-    let pilot = new Pilot("Darth Vader", [1, 2, 3]);
-    let items: ShipItem[] = [new Blaster()];
-    let ship = new ShipInfo("TIE Fighter", PlayerID.PLAYER_2, Jumper, pilot, items);
-
-    return ship;
-}
+import { newBlaster } from "./items/Blaster";
 
 /**
  * Maximum turn length in milliseconds
@@ -58,23 +39,16 @@ export function startGame(players: [Player, Player]): void {
     let turn_timeout: number | null = null;
 
     /** DEBUG STATE SETUP *****************************************************/
-    /* Create a ship, pilot, and gun */
-    let [h1, h2] = state.hangers;
-    h1.push(testShip1());
-    h1.push(testShip1());
-    h1.push(testShip1());
-    h1.push(testShip1());
+    const ship = newShip(Jumper, PlayerID.PLAYER_1, "Han Solo", [2, 2, 2]);
+    const blaster = newBlaster(ship);
 
-    state.grid.set(new Vec2(0, 0), testShip1().toShip(new Vec2(0, 0), destroyShip));
-    state.grid.set(new Vec2(0, -1), testShip2().toShip(new Vec2(0, -1), destroyShip));
+    const oship = newShip(Vanguard, PlayerID.PLAYER_2, "Darth Vade", [1, 4, 1]);
+    const oblaster = newBlaster(oship);
+
+    ship.addComponent(HexPosition, ship.id, new Vec2(0, 0));
+    oship.addComponent(HexPosition, oship.id, new Vec2(-1, 0));
+
     /** END DEBUG STATE SETUP *************************************************/
-
-    /* Bind event handlers */
-    function destroyShip(ship: Ship): void{
-         console.assert(ship!.position! != null);
-
-         state.grid.set(ship!.position!, null);
-    }
 
     /**
      * Perform an action on behalf of a player
@@ -108,12 +82,8 @@ export function startGame(players: [Player, Player]): void {
             clearTimeout(turn_timeout);
         }
 
-        /* Process turn on game objects */
-        for (let [loc, ship] of state.grid.cells) {
-            if (ship != null && ship.player != state.current_player) {
-                ship.processTurnEnd();
-            }
-        }
+        itemSystem.processTurnEnd(Player.other(state.current_player));
+        timeoutWatcher.processTurnEnd(Player.other(state.current_player));
 
         state.turn_start = Date.now();
 
@@ -136,45 +106,14 @@ export function startGame(players: [Player, Player]): void {
     nextTurn();
 }
 
-/**
- * Describes the state of the game. This structure contains all the data needed
- * to represent the game internally. Any state needed for visualization purposes
- * (hovering grid cells, etc) is maintained exclusively on the client side
- */
 export class GameState {
     players: [Player, Player];
-    grid: HexGrid<GridEntity | null>;            /* Grid state                */
     current_player: PlayerID;                    /* Current player            */
-    hangers: [ShipInfo[], ShipInfo[]];           /* Undeployed ships for each
-                                                    player */
     turn_start: number;
 
     constructor(players: [Player, Player]) {
         this.players = players;
-        this.grid = new HexGrid<Ship | null>((pos) => { return null; } );
         this.current_player = PlayerID.PLAYER_1;
         this.turn_start = Date.now();
-        this.hangers = [[], []];
-
-        for (let loc of DeployPad.P1_TARGETS) {
-            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_1, loc));
-        }
-        for (let loc of DeployPad.P2_TARGETS) {
-            this.grid.set(loc, new DeployPad(PlayerID.PLAYER_2, loc));
-        }
     };
-    /**
-     * Get an entity by id
-     * @param  {EntityID} id ID of entity to get
-     * @return {Ship}      Ship or null if no ship exists
-     */
-    getEntity(id: EntityID): GridEntity | null {
-        /* Search grid */
-        for (let [loc, entity] of this.grid.cells) {
-            if (entity && entity.id == id) return entity
-        }
-
-        return null;
-
-    }
 };

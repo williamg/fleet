@@ -6,9 +6,8 @@ import { Vec2 } from "../../../game/Math"
 import { Canvas, CanvasStyle } from "../Canvas"
 import { GameState } from "../../../game/Game"
 import { PlayerID } from "../../../game/Player"
-import { EntityType, GridEntity } from "../../../game/GridEntity"
-import { Ship } from "../../../game/Ship"
-import { DeployPad } from "../../../game/DeployPad"
+import { Entity, EntityID } from "../../../game/Entity"
+import { Team, Health, Charge, Pilot } from "../../../game/Components"
 
 /**
  * Renders the logic for rendering a single hexagon tile to the screen
@@ -95,14 +94,6 @@ export class Hex {
         this.inner_hex = inner_tmp;
         this.status_hex = inner_status_tmp;
     }
-
-    /**
-     * Notify this hex of a changed game state
-     * @param  {GameState}          state    Game state
-     */
-    setState(state: GameState): void {
-            this.state = state;
-    }
     /**
      * Set the render style for the hex
      */
@@ -127,64 +118,47 @@ export class Hex {
         }
 
         canvas.drawPath(this.border);
+    }
 
-        let entity = this.state.grid.at(this.hex_pos);
+    renderEntity(entity: Entity, canvas: Canvas) {
+        const team = entity.getComponent(Team);
+        if (team == null) {
 
-        if (entity == null) return;
-
-        if (entity.type == EntityType.SHIP) {
-            let ship = entity as Ship;
-
-            if (ship.player == this.friendly) {
-                canvas.setStyle(Hex.INNER_FRIENDLY);
-            } else {
-                canvas.setStyle(Hex.INNER_ENEMY);
-            }
-
-            canvas.drawPath(this.inner_hex);
-
-            /* Draw health bar */
-            const health_percent = ship.health.current / ship.health.max;
-            const energy_percent = ship.charge.current / ship.charge.max;
-            const health_verts = this.statusArc(2, 3, 4, health_percent);
-            const energy_verts = this.statusArc(1, 0, 5, energy_percent);
-
-            let health_style = new CanvasStyle("green", "green", 0);
-            let energy_style = new CanvasStyle("yellow", "yellow", 0);
-
-            canvas.setStyle(health_style);
-            canvas.drawPath(health_verts);
-
-            canvas.setStyle(energy_style);
-            canvas.drawPath(energy_verts);
+        } else if (team.team == this.friendly) {
+            canvas.setStyle(Hex.INNER_FRIENDLY);
         } else {
-            let dp = entity as DeployPad;
+            canvas.setStyle(Hex.INNER_ENEMY);
+        }
 
-            if (dp.player == this.friendly) {
-                canvas.setStyle(Hex.INNER_FRIENDLY);
-            } else {
-                canvas.setStyle(Hex.INNER_ENEMY);
-            }
-
+        if (entity.getComponent(Pilot) != null) {
+            canvas.drawPath(this.inner_hex);
+        } else {
             canvas.drawPath([
                 this.inner_hex[0].lerp(this.inner_hex[5], 0.75),
                 this.inner_hex[3].lerp(this.inner_hex[4], 0.75),
                 this.inner_hex[3].lerp(this.inner_hex[2], 0.75),
                 this.inner_hex[0].lerp(this.inner_hex[1], 0.75)
             ]);
+        }
 
+        const health = entity.getComponent(Health);
+
+        if (health != null) {
             /* Draw health bar */
-            const health_percent = dp.health.current / dp.health.max;
-            const energy_percent = dp.charge.current / dp.charge.max;
-            const health_verts = this.statusArc(2, 3, 4, health_percent);
-            const energy_verts = this.statusArc(1, 0, 5, energy_percent);
-
             let health_style = new CanvasStyle("green", "green", 0);
-            let energy_style = new CanvasStyle("yellow", "yellow", 0);
-
+            const health_percent = health.current_health / health.max_health;
+            const health_verts = this.statusArc(2, 3, 4, health_percent);
             canvas.setStyle(health_style);
             canvas.drawPath(health_verts);
+        }
 
+        const charge = entity.getComponent(Charge);
+
+        if (charge != null) {
+            const energy_percent = charge.current_charge / charge.max_charge;
+            const energy_verts = this.statusArc(1, 0, 5, energy_percent);
+
+            let energy_style = new CanvasStyle("yellow", "yellow", 0);
             canvas.setStyle(energy_style);
             canvas.drawPath(energy_verts);
         }
