@@ -2,7 +2,6 @@
  * @file game/Game.ts
  * Functionality and datastructure related to actually playing a match
  */
-
 import { Action, ActionType } from "./Action"
 import { Entity } from "./Entity"
 import { GlobalState } from "./GlobalState"
@@ -11,7 +10,6 @@ import { Vec2 } from "./Math"
 import { newShip, newDeployPad, ShipClass, Jumper, Fighter, Vanguard } from "./Ship";
 import { Player, PlayerID } from "./Player"
 import { Team } from "./components/Team"
-
 
 
 /**
