@@ -5,13 +5,13 @@
   "main": "server/main.ts",
   "scripts": {
     "start": "npm run build:live",
-    "build:live": "watchify client/js/main.ts -o client/bundle.js -t [ babelify --presets [ es2015] ] -p [ tsify --noImplicitAny --allowJs ]"
+    "build:live": "watchify client/js/main.ts -v -o client/bundle.js -p [ tsify --noImplicitAny --allowJs ] -t [ babelify --presets [ es2015 ] ]  --debug"
   },
   "author": "William Ganucheau",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^6.0.54",
-    "@types/pixi.js": "^4.3.1",
+    "@types/pixi.js": "^4.4.4",
     "@types/ws": "0.0.37",
     "babel-preset-es2015": "^6.18.0",
     "babelify": "^7.3.0",
@@ -23,7 +23,7 @@
     "watchify": "^3.8.0"
   },
   "dependencies": {
-    "pixi.js": "^4.3.2",
+    "pixi.js": "^4.5.1",
     "ws": "^1.1.1"
   }
 }
