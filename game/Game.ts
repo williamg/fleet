@@ -17,6 +17,7 @@ import { Team } from "./components/Team"
  * @type {Number}
  */
 export const TURN_TIMEOUT = 10000;
+export type StartGameFn = () => void;
 
 /**
  * Determine whether or not the game is over
@@ -26,12 +27,12 @@ export const TURN_TIMEOUT = 10000;
 function gameOver(state: GlobalState): boolean {
     return false;
 }
-
 /**
- * Start a game between the provided players
- * @param {[Player, Player]} players Players in the game
+ * Prepare to start a game
+ * @param  {[Player, Player]} players Players in the game
+ * @return {StartGameFn}              Function to start the game
  */
-export function startGame(players: [Player, Player]): void {
+export function initGame(players: [Player, Player]): StartGameFn {
     let state = new GlobalState();
     let turn_timeout: number | null = null;
 
@@ -114,6 +115,5 @@ export function startGame(players: [Player, Player]): void {
         }
     });
 
-    /* Set things in motion */
-    startTurn();
+    return startTurn;
 }

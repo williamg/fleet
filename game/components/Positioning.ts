@@ -73,6 +73,9 @@ export class Movement extends Component {
         this._charge_comp = charge_comp;
         this.move_cost = new Attribute(0, Infinity, move_cost);
     }
+    moveable(): boolean {
+        return this._charge_comp.current_charge >= this.move_cost.value();
+    }
     /**
      * Filter for determining valid destinations. The filter checks:
      * - That the destination isn't occupied

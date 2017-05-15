@@ -48,14 +48,20 @@ export class Item extends Component {
         super.processTurnEnd();
         if (this.cooldown_remaining > 0) this.cooldown_remaining--;
     }
+    /* Determine whether or not this item is able to be used */
+    usable() {
+        if (this.cooldown_remaining > 0) return false;
+        if (this.cost > 0 &&
+            this.charge!.current_charge < this.cost) return false;
+
+        return true;
+    }
     /**
      * Use this item
      * @return {boolean} Whether or not usage was successful
      */
     use(target: EntityID | null): boolean {
-        if (this.cooldown_remaining > 0) return false;
-        if (this.cost > 0 &&
-            this.charge!.current_charge < this.cost) return false;
+        if (!this.usable()) return false;
 
         const filter = this.targetFilter();
 

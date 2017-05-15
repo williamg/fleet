@@ -1,64 +1,9 @@
 <html>
     <head>
+        <link href="https://fonts.googleapis.com/css?family=Droid+Sans:400,700" rel="stylesheet"> 
         <link rel="stylesheet" type="text/css" href="style.css" />
     </head>
     <body>
-        <div id="wrapper">
-            <div id="hanger_list">
-                <span class="header">Hanger</span>
-                <ul id="hanger">
-                    <li>Ship 1</li>
-                    <li>Ship 1</li>
-                    <li>Ship 1</li>
-                </ul>
-                <div class="button-wrapper">
-                    <button id="deploy" disabled="true">Deploy</button>
-                </div>
-            </div>
-            <div id="canvas_wrapper"></div>
-            <div id="status-effects"></div>
-            <button id="turn">End Turn</button>
-            <span id="timer">10</span>
-            <div id="hud">
-                <div id="square"></div>
-                <div id="ship_info">
-                    <div id="stats">
-                        <span class="header" id="ship-name">N/A</span>
-                        <span class="stat ship" id="charge">999/999</span>
-                        <span class="stat ship" id="health">999/999</span>
-                        <span class="stat ship" id="recharge">99</span>
-                        <span class="stat ship" id="move_cost">99</span>
-                        <span class="header" id="pilot-name">N/A</span>
-                        <span class="stat pilot" id="accuracy">99</span>
-                        <span class="stat pilot" id="precision">99</span>
-                        <span class="stat pilot" id="evasion">99</span>
-                        <button id="move">Move</button>
-                    </div>
-                    <div id="items">
-                        <div class="item">
-                            <span class="header" id="item0-name">Blaster</span>
-                            <p id="item0-description">Inflict 20 (35) damage on the nearest
-                            enemy within 2 units in the item direction.</p>
-                            <button id="item0">Use</button>
-                        </div>
-                        <div class="item">
-                            <span class="header" id="item1-name">Blaster</span>
-                            <p id="item1-description">Inflict 20 (35) damage on the nearest
-                            enemy within 2 units in the item direction.</p>
-                            <button id="item1">Use</button>
-                        </div>
-                        <div class="item">
-                            <span class="header" id="item2-name">Blaster</span>
-                            <p id="item2-description">Inflict 20 (35) damage on the nearest
-                            enemy within 2 units in the item direction.</p>
-                            <button id="item2">Use</button>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <script src="bundle.js" type="text/javascript"></script>
     </body>
 </html>
