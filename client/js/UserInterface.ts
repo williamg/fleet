@@ -30,7 +30,9 @@ export class UserInterface {
      */
     private readonly app: PIXI.Application;
 
-    constructor(callback: () => void) {
+    constructor(scene: Scene, callback: () => void) {
+        this.scene = scene;
+
         /* Initialize PIXI */
         this.app = new PIXI.Application(WIDTH, HEIGHT);
         document.body.appendChild(this.app.view);
@@ -44,8 +46,6 @@ export class UserInterface {
         /* Load assets */
         this.loader.add('assets/ui/ui.json').load(() => {
             LOG.INFO("Finished loading textures");
-
-            this.scene = new MainMenu();
 
             /* Initialize scene */
             this.scene_stage = new PIXI.Container();

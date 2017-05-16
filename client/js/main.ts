@@ -4,26 +4,26 @@
  */
 
 import { UserInterface } from "./UserInterface"
-import { WebPlayer } from "./WebPlayer"
 import { MainMenu } from "./desktop/MainMenu"
 import { initGame } from "../../game/Game"
 import { PlayerID, AIPlayer} from "../../game/Player"
 import { GlobalState } from "../../game/GlobalState"
+import { Message, MessageType } from "../../game/Message"
 
-const ui = new UserInterface(() => {});
+const ws = new WebSocket('ws://localhost:8080');
+ws.addEventListener('message', handleMessage);
 
-function initGameScreen(id: PlayerID, input_handler: GameInputHandler,
-                        state: GlobalState): void {
-    const game_screen = new GameScreen(id, input_handler, state);
-    ui.setScene(game_screen, () => {
-        startGame();
-    });
+const main_menu = new MainMenu();
+const ui = new UserInterface(main_menu, () => {});
+
+function handleMessage(event: MessageEvent) {
+    const msg = Message.deserialize(event.data);
+
+    if (msg.type == MessageType.SERVER_STATUS) {
+        /* Assume connected, find match */
+        const find_match = new Message(MessageType.FIND_MATCH, "");
+        ws.send(find_match.serialize());
+    } else if (msg.type == MessageType.MATCH_FOUND) {
+        /* Found match, wait for initial game */
+    }
 }
-
-function onStateUpdate(state: GlobalState): void {
-}
-
-/* User clicks on "play", match is found */
-const user_player = new WebPlayer(initGameScreen, onStateUpdate);
-
-

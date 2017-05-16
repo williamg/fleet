@@ -15,7 +15,8 @@
         "preserveConstEnums": true,
         "suppressImplicitAnyIndexErrors": true,
         "strictNullChecks": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "typeRoots": ["node_modules/@types"]
     },
     "exclude": [
         "node_modules",

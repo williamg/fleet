@@ -23,9 +23,9 @@ export class GameScreen extends Scene {
         super();
 
         this.input_handler = input_handler;
-        this.target_window = new TargetWindow(this.input_handler, ship);
+/*        this.target_window = new TargetWindow(this.input_handler, ship);
         this.target_window.x = 0;
-        this.target_window.y = 1080 - this.target_window.height;
+        this.target_window.y = 1080 - this.target_window.height;*/
 
         this.grid = new Grid(state.grid, friendly, this.input_handler);
         this.grid.x = 1920 / 2;
