@@ -4,6 +4,7 @@
  */
 
 import { Scene } from "../Scene"
+import { Style } from "./UI"
 
 import * as PIXI from "pixi.js"
 
@@ -20,21 +21,7 @@ function createButton(y: number, color: string, label: string,
     image.buttonMode = true;
     image.on('click', click_handler);
 
-    const style = new PIXI.TextStyle({
-        fontFamily: "Droid Sans",
-        fontSize: 20,
-        fill: "#FFFFFF",
-        /* For some reason, drop shadow only works if text is stroked... */
-        stroke: "#FFFFFF",
-        strokeThickness: 1,
-        dropShadow: true,
-        dropShadowColor: "#FFFFFF",
-        dropShadowBlur: 2,
-        dropShadowAngle: 0,
-        dropShadowDistance: 0
-    });
-
-    let label_item = new PIXI.Text(label, style);
+    let label_item = new PIXI.Text(label, Style.text.button);
     label_item.anchor.x = 0.5;
     label_item.anchor.y = 0.5;
     label_item.x = 128;
@@ -75,10 +62,5 @@ export class MainMenu extends Scene {
         menu.addChild(createButton(192, "grey", "SETTINGS", () => {console.log("SETTINGS");}));
 
         callback();
-    }
-
-    public render(delta: number): void
-    {
-
     }
 }
