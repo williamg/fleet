@@ -19,8 +19,10 @@ export class GlobalState {
         new HexGrid<EntityID | null>((_) => { return null; });
     current_player: PlayerID;
     turn_start: number;
+    started: boolean;
 
     constructor() {
         this.current_player = PlayerID.PLAYER_1;
+        this.started = false;
     }
 }

@@ -20,6 +20,8 @@ function handleMessage(event: MessageEvent) {
     const msg = Message.deserialize(event.data);
 
     if (msg.type == MessageType.SERVER_STATUS) {
+        main_menu.appendMessage(msg.data);
+
         /* Assume connected, find match */
         const find_match = new Message(MessageType.FIND_MATCH, "");
         ws.send(find_match.serialize());

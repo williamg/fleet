@@ -8,6 +8,18 @@ import { Style } from "./UI"
 
 import * as PIXI from "pixi.js"
 
+const TEXT_X = 25;
+const TEXT_Y = 260;
+const TEXT_MAX_WIDTH = 234;
+const TEXT_MAX_HEIGHT = 255;
+const STATUS_STYLE = new PIXI.TextStyle({
+    fontFamily: "Droid Sans",
+    fontSize: 14,
+    fill: "#FFFFFF",
+    wordWrap: true,
+    wordWrapWidth: TEXT_MAX_WIDTH
+});
+
 function createButton(y: number, color: string, label: string,
                       click_handler: () => void): PIXI.Container {
     let button_container = new PIXI.Container();
@@ -34,33 +46,105 @@ function createButton(y: number, color: string, label: string,
 }
 
 export class MainMenu extends Scene {
-    private menu: PIXI.Container;
+    private menu: PIXI.Sprite;
+    private text_container: PIXI.Container;
+
+    /* Array of timestamped messages to display in the text section of the
+     * MainMenu UI
+     */
+    private text: [Date, string][] = [];
 
     constructor() {
         super();
     }
 
     public enter(stage: PIXI.Container, callback: () => void): void {
-        /* Render background image */
-        //let bg_sprite = PIXI.Sprite.fromImage('assets/ui/background.png');
-
-        //stage.addChild(bg_sprite);
-
         /* Setup menu */
-        let menu = new PIXI.Container();
-        menu.x = 20;
-        menu.y = 540;
+        this.menu =
+            new PIXI.Sprite(PIXI.Texture.fromFrame('main_menu_frame.png'));
+        this.menu.x = 20;
+        this.menu.y = 540;
 
-        let menu_sprite = new PIXI.Sprite(PIXI.Texture.fromFrame('main_menu_frame.png'));
-        menu.addChild(menu_sprite);
+        this.menu.addChild(
+            createButton(12, "blue", "PLAY", () => {console.log("PLAY");}));
+        this.menu.addChild(
+            createButton(72, "green", "MY FLEET", () => {console.log("FLEET");}));
+        this.menu.addChild(
+            createButton(132, "grey", "STATS", () => {console.log("STATS");}));
+        this.menu.addChild(
+            createButton(192, "grey", "SETTINGS", () => {console.log("SETTINGS");}));
 
-        stage.addChild(menu);
+        this.text_container = new PIXI.Container();
+        this.text_container.x = TEXT_X;
+        this.text_container.y = TEXT_Y;
 
-        menu.addChild(createButton(12, "blue", "PLAY", () => {console.log("PLAY");}));
-        menu.addChild(createButton(72, "green", "MY FLEET", () => {console.log("FLEET");}));
-        menu.addChild(createButton(132, "grey", "STATS", () => {console.log("STATS");}));
-        menu.addChild(createButton(192, "grey", "SETTINGS", () => {console.log("SETTINGS");}));
+        this.menu.addChild(this.text_container);
+
+        stage.addChild(this.menu);
 
         callback();
+    }
+
+    private clearTextContainer(): void {
+        this.menu.removeChild(this.text_container);
+
+        this.text_container = new PIXI.Container();
+        this.text_container.x = TEXT_X;
+        this.text_container.y = TEXT_Y;
+
+        this.menu.addChild(this.text_container);
+    }
+
+    public render() {
+    }
+    /**
+     * Add a message to the text box
+     *
+     * @param {string} msg String to append
+     */
+    public appendMessage(msg: string): void {
+        this.clearTextContainer();
+
+        this.text.unshift([new Date(), msg]);
+
+        /* While we haven't exceeded the height of the text box, add messages
+         * and their timestamps. Newest at the top
+         */
+        let current_height = 0;
+        let i = 0;
+
+        while (true) {
+            const [date, str] = this.text[i];
+            const formatted = "[" + date.getHours().toString() + ":" +
+                              date.getMinutes().toString() + "] " + str;
+            const metrics =
+                PIXI.TextMetrics.measureText(formatted, STATUS_STYLE);
+
+            /* Stop if adding this next string would cause us to overflow */
+            if (current_height + metrics.height > TEXT_MAX_HEIGHT) {
+                break;
+            }
+
+            const text = new PIXI.Text(formatted, STATUS_STYLE);
+            text.x = 0;
+            text.y = current_height;
+
+            this.text_container.addChild(text);
+
+            current_height += metrics.height;
+
+            /* Stop if this was the last message */
+            i++;
+
+            if (i >= this.text.length) {
+                break;
+            }
+        }
+
+        /* Remove any messages that aren't being displayed anymore */
+        while (i < this.text.length) {
+            this.text.pop();
+            i++;
+        }
     }
 }

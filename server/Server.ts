@@ -30,5 +30,7 @@ export class Server {
         const msg =
             new Message(MessageType.SERVER_STATUS, "Connected to server!");
         ws.send(msg.serialize())
+
+        setTimeout(() => { this.handleNewClient(ws); }, 2000);
     }
 }
