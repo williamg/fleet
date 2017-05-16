@@ -66,3 +66,7 @@ export function hexDist(a: Vec2, b: Vec2): number {
 
     return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(az - bz));
 }
+
+export function clamp(v: number, min: number, max: number): number {
+    return Math.min(max, Math.max(v, min));
+}

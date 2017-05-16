@@ -8,13 +8,14 @@
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "declaration": false,
-        "noImplicitAny": false,
+        "noImplicitAny": true,
         "noImplicitUseStrict": false,
         "removeComments": true,
         "noLib": false,
         "preserveConstEnums": true,
         "suppressImplicitAnyIndexErrors": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "sourceMap": true
     },
     "exclude": [
         "node_modules",

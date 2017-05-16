@@ -5,9 +5,10 @@
  */
 
 import { Vec2 } from "./Math";
+import { ASSERT } from "./util"
 
 /* Coordinates that make up the map */
-const MAP = [
+export const MAP = [
     [0, 0], [1, 0], [0, 1], [-1, 0], [0, -1], [1, -1], [-1, 1],
     [-2, 0], [0, 2], [2, 0], [0, -2], [1, 1], [-1, -1], [2, -1],
     [-2, 1], [1, -2], [-1, 2], [-2, 2], [2, -2], [3, 0], [-3, 0], [2, 1],
@@ -15,6 +16,10 @@ const MAP = [
     [-4, 3], [4, -2], [-4, 2], [-2, 3],
     [3, -1], [3, -2], [2, -3], [4, -1]
 ];
+export const MAP_COORDS =
+    MAP.map<Vec2>(([a, b]: [number, number]) => {
+        return new Vec2(a, b);
+    });
 /**
  * Directions of neighbors
  * @type {Array}
@@ -29,7 +34,7 @@ const NEIGHBOR_DIRS = [
  * @param  {Vec2} coord Potentially floating hex coord
  * @return {Vec2}       Rounded, integral hex coord
  */
-export function hex_round(coord: Vec2): Vec2 {
+export function hexRound(coord: Vec2): Vec2 {
     const z = -coord.x - coord.y;
 
     var rx = Math.round(coord.x);
@@ -72,13 +77,13 @@ export class HexGrid<T> {
      * @return {T | null}        Value
      */
     at(coord: Vec2): (T | null) {
-        coord = hex_round(coord);
+        coord = hexRound(coord);
 
         for (let [cell_coord, val] of this.cells) {
             if (coord.equals(cell_coord)) return val;
         }
 
-        console.assert(false);
+        ASSERT(false);
         return null;
     }
     /**
@@ -87,7 +92,7 @@ export class HexGrid<T> {
      * @param {T}    val   Value to set
      */
     set(coord: Vec2, val: T): void {
-        coord = hex_round(coord);
+        coord = hexRound(coord);
 
         for (let i = 0; i < this.cells.length; ++i) {
             let [cell_coord, _] = this.cells[i];
@@ -118,7 +123,7 @@ export class HexGrid<T> {
      * @return {boolean}       Whether or not coord is in bounds
      */
     inBounds(coord: Vec2): boolean {
-        coord = hex_round(coord);
+        coord = hexRound(coord);
 
         for (let [cell_coord, val] of this.cells) {
             if (coord.equals(cell_coord)) return true;
