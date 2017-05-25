@@ -7,8 +7,14 @@
  * - In-game logic
  * - TODO: Fleet management
  */
+import { Client } from "./Client"
+import { WebPlayer } from "./WebPlayer"
+import { AIPlayer } from "./AIPlayer"
+import { Game } from "./Game"
 import { LOG, ASSERT } from "../game/util"
 import { Message, MessageType } from "../game/Message"
+import { TeamID } from "../game/components/Team"
+import { GlobalState, VisibleState } from "../game/GlobalState"
 
 import * as WebSocket from "ws"
 
@@ -25,12 +31,72 @@ export class Server {
         /* Handle client connections */
         this.wss.on('connection', this.handleNewClient.bind(this));
     }
-
+    /**
+     * Authenticate a user by mapping a websocket to a Client
+     *
+     * We'll probably do this by migrating over to express and using Passport.
+     *
+     * @param {WebSocket}                ws      Websocket to authenticate
+     * @param {(client: Client) => void} success Success callback
+     * @param {() => void}               error   Error callback
+     */
+    private authenticate(ws: WebSocket, success: (client: Client) => void,
+                         error: () => void): void {
+        /* TODO */
+        return success(new Client(1337, ws));
+    }
+    /**
+     * Handle a new, unauthenticated client connection
+     *
+     * @param {WebSocket} ws Websocket
+     */
     private handleNewClient(ws: WebSocket): void {
-        const msg =
-            new Message(MessageType.SERVER_STATUS, "Connected to server!");
-        ws.send(msg.serialize())
+        this.authenticate(ws, (client: Client) => {
+            const msg =
+                new Message(MessageType.SERVER_STATUS, "Connected to server!");
+            ws.send(msg.serialize())
 
-        setTimeout(() => { this.handleNewClient(ws); }, 2000);
+            ws.on('message', (message: string) => {
+                this.handleMessage(client, Message.deserialize(message));
+            });
+        }, () => {});
+    }
+    /**
+     * Handle a message from an authenticated client
+     *
+     * @param {Client}  client  Client sending the message
+     * @param {Message} message Message sent by the client
+     */
+    private handleMessage(client: Client, message: Message) {
+        LOG.DEBUG(`Received message ${message.type} from client ${client.id}`);
+
+        switch (message.type) {
+        case MessageType.PLAY_AI_MATCH:
+            const web = new WebPlayer(TeamID.TEAM_1, client);
+            const ai = new AIPlayer(TeamID.TEAM_2);
+            const game = new Game([web, ai]);
+
+            /* Ready AI immediately */
+            ai.ready();
+
+            client.player = web;
+
+            const vs = new VisibleState(TeamID.TEAM_1, game.state);
+
+            const match_found =
+                    new Message(MessageType.MATCH_FOUND, vs.serialize());
+            client.ws.send(match_found.serialize());
+            break;
+        case MessageType.READY:
+        case MessageType.ACTION:
+        case MessageType.END_TURN:
+            if (client.player == null) {
+                LOG.ERROR("Received game message from client not in game");
+                return;
+            }
+
+            client.player.handleMessage(message);
+            break;
+        }
     }
 }

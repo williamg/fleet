@@ -14,7 +14,6 @@ export enum ActionType {
     MOVE,
     ACTIVATE,
     DEPLOY,
-    END_TURN
 };
 /*
  * Actions are the primary interface betwene player and game. Each player's turn
@@ -26,15 +25,31 @@ export abstract class Action {
      * @type {ActionType}
      */
     readonly type: ActionType;
+    /**
+     * Deserialize an action
+     * @return {Action} The deserialized action
+     */
+    public static deserialize(action: string): Action {
+        /* TODO */
+        return new Move(0, new Vec2(0, 0));
+    }
 
     constructor(type: ActionType) {
         this.type = type;
     }
     /**
      * Execute an action
-     * @return {boolean}         Whether or not execution was successful
+     * @return {boolean} Whether or not execution was successful
      */
-    abstract execute(): boolean;
+    public abstract execute(): boolean;
+    /**
+     * Serialize an action
+     * @return {string} Serialized action
+     */
+    public serialize(): string {
+        return "";
+    }
+
 };
 /**
  * Move an entity from one cell to another

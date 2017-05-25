@@ -5,13 +5,12 @@
 
 import { Style } from "./UI"
 import { GameInputHandler } from "./GameInputHandler"
-import { Player, PlayerID } from "../../../game/Player"
 import { Vec2 } from "../../../game/Math"
 import { LOG, ASSERT } from "../../../game/util"
 import { HexGrid, hexRound } from "../../../game/HexGrid"
 import { Entity, EntityID } from "../../../game/Entity"
 import { Position } from "../../../game/components/Positioning"
-import { Team } from "../../../game/components/Team"
+import { Team, TeamID } from "../../../game/components/Team"
 
 import * as PIXI from "pixi.js"
 
@@ -28,11 +27,11 @@ function hexToPixel(hex: Vec2): Vec2 {
 
 export class Grid extends PIXI.Container {
     private readonly grid: HexGrid<EntityID | null>;
-    private readonly friendly: PlayerID;
+    private readonly friendly: TeamID;
     private readonly input_handler: GameInputHandler;
     private readonly graphics: PIXI.Graphics;
 
-    constructor(grid: HexGrid<EntityID | null>, friendly: PlayerID,
+    constructor(grid: HexGrid<EntityID | null>, friendly: TeamID,
         input_handler: GameInputHandler) {
         super()
 

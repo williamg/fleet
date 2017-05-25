@@ -7,10 +7,9 @@ import { Vec2 } from "../../../game/Math"
 import { Entity } from "../../../game/Entity"
 import { Item } from "../../../game/components/Item"
 import { LOG } from "../../../game/util"
-import { ActionCB, EndTurnCB } from "../../../game/Player"
 
 export class GameInputHandler extends PIXI.Container {
-    constructor(action_cb: ActionCB, end_turn_cb: EndTurnCB) {
+    constructor() {
         super();
     }
 

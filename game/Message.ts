@@ -6,9 +6,13 @@ import { LOG, ASSERT } from "./util"
 
 export enum MessageType {
     SERVER_STATUS,  /* Any message/status update from the server */
-    FIND_MATCH,     /* Client is requesting a match              */
+    FIND_PVP_MATCH, /* Client is requesting a pvp match          */
+    PLAY_AI_MATCH,  /* Client is requesting an AI match          */
     MATCH_FOUND,    /* Server has found a match                  */
+    READY,          /* Client ready to start                     */
     GAME_STATE,     /* In game, game state update                */
+    ACTION,         /* In game, make an action                   */
+    END_TURN        /* In game, end the turn                     */
 }
 
 export class Message {

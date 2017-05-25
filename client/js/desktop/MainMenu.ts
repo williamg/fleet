@@ -115,6 +115,8 @@ export class MainMenu extends Scene {
 
         while (true) {
             const [date, str] = this.text[i];
+
+            /* TODO: Pad hours and minutes with 0s on the left */
             const formatted = "[" + date.getHours().toString() + ":" +
                               date.getMinutes().toString() + "] " + str;
             const metrics =

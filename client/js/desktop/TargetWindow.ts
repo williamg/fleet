@@ -192,7 +192,10 @@ export class TargetWindow extends PIXI.Container {
             this.item_buttons.push(item_button);
             this.button_tray.addChild(item_button);
         }
+
+        this.setTarget(this.targeted.id);
     }
+
     public setButtonTrayVisible(visible: boolean): void
     {
         this.buttons_visible = visible;

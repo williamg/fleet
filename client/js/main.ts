@@ -5,9 +5,9 @@
 
 import { UserInterface } from "./UserInterface"
 import { MainMenu } from "./desktop/MainMenu"
-import { initGame } from "../../game/Game"
-import { PlayerID, AIPlayer} from "../../game/Player"
-import { GlobalState } from "../../game/GlobalState"
+import { GameScreen } from "./desktop/GameScreen"
+import { GameInputHandler } from "./desktop/GameInputHandler"
+import { GlobalState, VisibleState } from "../../game/GlobalState"
 import { Message, MessageType } from "../../game/Message"
 
 const ws = new WebSocket('ws://localhost:8080');
@@ -23,9 +23,19 @@ function handleMessage(event: MessageEvent) {
         main_menu.appendMessage(msg.data);
 
         /* Assume connected, find match */
-        const find_match = new Message(MessageType.FIND_MATCH, "");
+        const find_match = new Message(MessageType.PLAY_AI_MATCH, "");
         ws.send(find_match.serialize());
     } else if (msg.type == MessageType.MATCH_FOUND) {
-        /* Found match, wait for initial game */
+        /* Found match transition to game view */
+        main_menu.appendMessage("Match found!");
+
+        const initial_state = VisibleState.deserialize(msg.data);
+        const input_handler = new GameInputHandler();
+        const game_screen = new GameScreen(input_handler, initial_state.pov,
+                                           initial_state.state);
+        ui.setScene(game_screen, () => {
+            const ready = new Message(MessageType.READY, "");
+            ws.send(ready.serialize());
+        });
     }
 }

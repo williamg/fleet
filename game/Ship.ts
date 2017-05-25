@@ -4,7 +4,6 @@
 
 import { Entity } from "./Entity"
 import { GlobalState } from "./GlobalState"
-import { PlayerID } from "./Player"
 import { Vec2 } from "./Math"
 import { Charge } from "./components/Charge"
 import { Deployable } from "./components/Deployable"
@@ -13,7 +12,7 @@ import { Health } from "./components/Health"
 import { Pilot } from "./components/Pilot"
 import { Position } from "./components/Positioning"
 import { ShipInfo } from "./components/ShipInfo"
-import { Team } from "./components/Team"
+import { Team, TeamID } from "./components/Team"
 /**
  * Describes a particular class of ship.
  */
@@ -52,7 +51,7 @@ export const Vanguard: ShipClass = {
 };
 
 export function newShip(state: GlobalState, ship_class: ShipClass, name: string,
-                        player: PlayerID, pilot_name: string,
+                        player: TeamID, pilot_name: string,
                         pilot_stats: [number, number, number]): Entity {
     let entity = new Entity(state);
     entity.addComponent(Charge, entity, ship_class.max_charge, ship_class.recharge);
@@ -67,7 +66,7 @@ export function newShip(state: GlobalState, ship_class: ShipClass, name: string,
     return entity;
 }
 
-export function newDeployPad(state: GlobalState, pos: Vec2, player: PlayerID): Entity {
+export function newDeployPad(state: GlobalState, pos: Vec2, player: TeamID): Entity {
     let entity = new Entity(state);
     entity.addComponent(Charge, entity, 50, 5);
     entity.addComponent(Health, entity, 100);
