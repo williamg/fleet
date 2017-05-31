@@ -11,6 +11,7 @@ export enum MessageType {
     MATCH_FOUND,    /* Server has found a match                  */
     READY,          /* Client ready to start                     */
     GAME_STATE,     /* In game, game state update                */
+    CHANGESET,      /* In game, changeset                        */
     ACTION,         /* In game, make an action                   */
     END_TURN        /* In game, end the turn                     */
 }
@@ -19,21 +20,8 @@ export class Message {
     public readonly type: MessageType;
     public readonly data: string;
 
-    constructor(type: MessageType, data: string) {
+    constructor(type: MessageType, data: any) {
         this.type = type;
         this.data = data;
-    }
-
-    public serialize(): string {
-        return JSON.stringify({ type: this.type, data: this.data });
-    }
-
-    static deserialize(blob: string): Message {
-        const json = JSON.parse(blob) as {type: MessageType, data: string};
-
-        ASSERT(json.type != undefined);
-        ASSERT(json.data != undefined);
-
-        return new Message(json.type, json.data);
     }
 }

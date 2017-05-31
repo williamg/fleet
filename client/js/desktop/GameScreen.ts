@@ -9,41 +9,60 @@ import { Grid } from "./Grid"
 import { Scene } from "../Scene"
 import { LOG } from "../../../game/util"
 import { TeamID } from "../../../game/components/Team"
-import { GlobalState } from "../../../game/GlobalState"
+import { GameState, GameStateChanger } from "../../../game/GameState"
+import { Change } from "../../../game/Changes"
+import { System } from "../../../game/System"
+import { GridSystem } from "../../../game/systems/GridSystem"
+import { Messengers } from "../../../game/Messenger"
+import { IDPool } from "../../../game/IDPool"
 
-/* Temporary */
-import { newShip, Jumper } from "../../../game/Ship"
+import { List } from "immutable"
 
 export class GameScreen extends Scene {
-    private readonly input_handler: GameInputHandler;
-    private readonly target_window: TargetWindow;
-    private readonly grid: Grid;
+    private readonly _input_handler: GameInputHandler;
+    private readonly _target_window: TargetWindow;
+    private readonly _grid: Grid;
+    private readonly _systems: System[];
+    private readonly _messengers: Messengers = new Messengers();
+    private _state: GameState;
 
     constructor(input_handler: GameInputHandler, friendly: TeamID,
-                state: GlobalState) {
+                state: GameState) {
         super();
 
-        /* Debug, create new ship */
-        const ship = newShip(state, Jumper, "Falcon", friendly, "Han Solo", [2, 2, 2]);
+        this._state = state;
 
-        this.input_handler = input_handler;
-        this.target_window = new TargetWindow(this.input_handler, ship);
-        this.target_window.x = 0;
-        this.target_window.y = 1080 - this.target_window.height;
+        this._input_handler = input_handler;
+        this._target_window = new TargetWindow(this._input_handler, undefined);
+        this._target_window.x = 0;
+        this._target_window.y = 1080 - this._target_window.height;
 
-        this.grid = new Grid(state.grid, friendly, this.input_handler);
-        this.grid.x = 1920 / 2;
-        this.grid.y = 1080 / 2;
+        const grid_system = new GridSystem(new IDPool(), this._messengers);
+        this._systems = [ grid_system ];
+
+        this._grid = new Grid(grid_system, this._input_handler);
+        this._grid.x = 1920 / 2;
+        this._grid.y = 1080 / 2;
     }
 
     public enter(stage: PIXI.Container, callback: () => void): void {
-        stage.addChild(this.target_window);
-        stage.addChild(this.grid);
+        stage.addChild(this._target_window);
+        stage.addChild(this._grid);
 
         callback();
     }
 
     public render(delta: number): void {
-        this.grid.render();
+        this._grid.render(this._state);
+    }
+
+    public handleChanges(changeset: List<Change>): void {
+        const mutable_state = new GameStateChanger(this._state, this._systems);
+
+        for (const change of changeset) {
+            mutable_state.makeChange(change);
+        }
+
+        this._state = mutable_state.state;
     }
 }

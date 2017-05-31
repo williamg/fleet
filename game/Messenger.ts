@@ -1,8 +1,9 @@
 /**
  * @file game/Messeger.ts
  */
+import { GameStateChanger } from "./GameState"
 
-export type Handler<M> = (msg: M) => boolean;
+export type Handler<M> = (msg: M, state: GameStateChanger) => boolean;
 export type Priority = number;
 /**
  * TODO: Ideally, would want a different type for each messenger instance
@@ -54,9 +55,13 @@ export class Messenger<T> {
      * passed to each handler. This allows handler to MODIFY the message passed to
      * to lower priority handlers. This is by design, but something to be
      * aware of.
-     * @param message:     {M}               Message object
+     *
+     * @param   {M}                 message Message object
+     * @param   {GameStateChanger}  state   Game state
+     * @returns {boolean}                   Whether or not the event was
+     *                                      propagated
      */
-    publish(message: T): void {
+    publish(message: T, state: GameStateChanger): boolean {
         const handler_pairs = [...this._subscribers.values()];
 
         /* Sort array such that higher-priority handlers execute first */
@@ -65,7 +70,52 @@ export class Messenger<T> {
         });
 
         for (const [_, handler] of handler_pairs) {
-            if (!handler(message)) break;
+            if (!handler(message, state)) return false;
         }
+
+        return true;
+    }
+}
+
+/**
+ * Class containing named references to all event messengers. Provides
+ * inter-system communication
+ */
+import { Entity } from "./Entity"
+import { Vec2 } from "./Math"
+
+export type BeforeMove = {
+    entity: Entity,
+    to: Vec2
+};
+
+export type AfterMove = {
+    entity: Entity
+    from: Vec2
+};
+
+export type BeforeDeploy = {
+    deploying: Entity,
+    dest: Entity,
+    index: number
+};
+
+export type AfterDeploy = {
+    deploying: Entity,
+    dest: Entity,
+    index: number
+};
+
+export class Messengers {
+    public readonly beforeMove: Messenger<BeforeMove> =
+        new Messenger<BeforeMove>();
+    public readonly afterMove: Messenger<AfterMove> =
+        new Messenger<AfterMove>();
+    public readonly beforeDeploy: Messenger<BeforeDeploy> =
+        new Messenger<BeforeDeploy>();
+    public readonly afterDeploy: Messenger<AfterDeploy> =
+        new Messenger<AfterDeploy>();
+
+    constructor() {
     }
 }
