@@ -14,7 +14,9 @@ import { Game } from "./Game"
 import { LOG, ASSERT } from "../game/util"
 import { Message, MessageType } from "../game/Message"
 import { TeamID } from "../game/components/Team"
-import { GlobalState, VisibleState } from "../game/GlobalState"
+import { GameState } from "../game/GameState"
+import { MatchInfo } from "../game/MatchInfo"
+import { serializeMessage, deserializeMessage } from "../game/serialization/MessageSerialization"
 
 import * as WebSocket from "ws"
 
@@ -54,10 +56,10 @@ export class Server {
         this.authenticate(ws, (client: Client) => {
             const msg =
                 new Message(MessageType.SERVER_STATUS, "Connected to server!");
-            ws.send(msg.serialize())
+            ws.send(serializeMessage(msg))
 
             ws.on('message', (message: string) => {
-                this.handleMessage(client, Message.deserialize(message));
+                this.handleMessage(client, deserializeMessage(message));
             });
         }, () => {});
     }
@@ -73,19 +75,19 @@ export class Server {
         switch (message.type) {
         case MessageType.PLAY_AI_MATCH:
             const web = new WebPlayer(TeamID.TEAM_1, client);
-            const ai = new AIPlayer(TeamID.TEAM_2);
-            const game = new Game([web, ai]);
-
-            /* Ready AI immediately */
-            ai.ready();
-
             client.player = web;
 
-            const vs = new VisibleState(TeamID.TEAM_1, game.state);
+            const ai = new AIPlayer(TeamID.TEAM_2);
 
-            const match_found =
-                    new Message(MessageType.MATCH_FOUND, vs.serialize());
-            client.ws.send(match_found.serialize());
+            /* Announce to both players that a match was found */
+            const web_match_info = new MatchInfo(TeamID.TEAM_1)
+            const ai_match_info = new MatchInfo(TeamID.TEAM_2)
+
+            ai.matchFound(ai_match_info);
+            web.matchFound(web_match_info);
+
+            /* Initialize the game */
+            const game = new Game([web, ai]);
             break;
         case MessageType.READY:
         case MessageType.ACTION:

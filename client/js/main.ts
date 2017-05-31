@@ -7,35 +7,49 @@ import { UserInterface } from "./UserInterface"
 import { MainMenu } from "./desktop/MainMenu"
 import { GameScreen } from "./desktop/GameScreen"
 import { GameInputHandler } from "./desktop/GameInputHandler"
-import { GlobalState, VisibleState } from "../../game/GlobalState"
+import { GameState } from "../../game/GameState"
 import { Message, MessageType } from "../../game/Message"
+import { deserializeMatchInfo } from "../../game/serialization/MatchSerialization"
+import { serializeMessage, deserializeMessage }
+    from "../../game/serialization/MessageSerialization"
+import { deserializeChangeset } from "../../game/serialization/ChangeSerialization"
 
 const ws = new WebSocket('ws://localhost:8080');
 ws.addEventListener('message', handleMessage);
 
 const main_menu = new MainMenu();
 const ui = new UserInterface(main_menu, () => {});
+let did_ready = false;
+let game_screen: GameScreen | undefined = undefined;
 
 function handleMessage(event: MessageEvent) {
-    const msg = Message.deserialize(event.data);
+    const msg = deserializeMessage(event.data);
 
     if (msg.type == MessageType.SERVER_STATUS) {
         main_menu.appendMessage(msg.data);
 
         /* Assume connected, find match */
         const find_match = new Message(MessageType.PLAY_AI_MATCH, "");
-        ws.send(find_match.serialize());
+        ws.send(serializeMessage(find_match));
     } else if (msg.type == MessageType.MATCH_FOUND) {
         /* Found match transition to game view */
         main_menu.appendMessage("Match found!");
 
-        const initial_state = VisibleState.deserialize(msg.data);
+        const match_info = deserializeMatchInfo(msg.data);
         const input_handler = new GameInputHandler();
-        const game_screen = new GameScreen(input_handler, initial_state.pov,
-                                           initial_state.state);
-        ui.setScene(game_screen, () => {
-            const ready = new Message(MessageType.READY, "");
-            ws.send(ready.serialize());
-        });
+        game_screen = new GameScreen(input_handler, match_info.friendly,
+                                     new GameState());
+    } else if (msg.type == MessageType.CHANGESET) {
+        if (!did_ready) {
+            console.log("Received first changeset");
+            game_screen!.handleChanges(deserializeChangeset(msg.data));
+            ui.setScene(game_screen!, () => {
+                did_ready = true;
+                const ready = new Message(MessageType.READY, "");
+                ws.send(serializeMessage(ready));
+            });
+        } else {
+            game_screen!.handleChanges(deserializeChangeset(msg.data));
+        }
     }
 }

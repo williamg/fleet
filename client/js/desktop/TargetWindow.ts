@@ -3,14 +3,7 @@ import { Style, FrameSprite, Label, Resource } from "./UI"
 import { GameInputHandler } from "./GameInputHandler"
 import { Vec2 } from "../../../game/Math"
 import { LOG } from "../../../game/util"
-import { Entity, EntityID } from "../../../game/Entity"
-import { Item } from "../../../game/components/Item"
-import { Health } from "../../../game/components/Health"
-import { Charge } from "../../../game/components/Charge"
-import { ShipInfo } from "../../../game/components/ShipInfo"
-import { Pilot } from "../../../game/components/Pilot"
-import { Movement } from "../../../game/components/Positioning"
-import { Deployable } from "../../../game/components/Deployable"
+import { Entity } from "../../../game/Entity"
 
 import * as PIXI from "pixi.js"
 
@@ -53,7 +46,7 @@ class ItemInfo {
 export class TargetWindow extends PIXI.Container {
     /* Target window state */
     private readonly input_handler: GameInputHandler;
-    private targeted: Entity;
+    private targeted: Entity | undefined;
     private buttons_visible: boolean;
 
     /* Containers for various sections */
@@ -80,10 +73,9 @@ export class TargetWindow extends PIXI.Container {
     private move_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
-    constructor(input_handler: GameInputHandler, target: Entity) {
+    constructor(input_handler: GameInputHandler, target: Entity | undefined) {
         super()
-
-        this.input_handler = input_handler;
+this.input_handler = input_handler;
         this.targeted = target;
         this.buttons_visible = false;
 
@@ -193,7 +185,9 @@ export class TargetWindow extends PIXI.Container {
             this.button_tray.addChild(item_button);
         }
 
-        this.setTarget(this.targeted.id);
+        if (this.targeted) {
+            this.setTarget(this.targeted);
+        }
     }
 
     public setButtonTrayVisible(visible: boolean): void
@@ -222,20 +216,10 @@ export class TargetWindow extends PIXI.Container {
     /**
      * Update the currently displayed target
      * 
-     * @param target Target entity to display
+     * @param entity Entity to display
      */
-    public setTarget(target: EntityID): void {
-        /* Grab the  entity. If the entity exists, display whatever we can,
-         * otherwise don't do anything
-         */
-        const entity = Entity.getEntity(target);
-
-        if (entity == null) {
-            LOG.WARN("Attempting to target entity that doesn't exist");
-            return;
-        }
-
-        if (target != this.targeted.id)
+    public setTarget(entity: Entity): void {
+        if (entity != this.targeted && this.targeted)
         {
             /* TODO: Uninstall event listeners, reinstall if this is a friendly
              * target
@@ -248,12 +232,12 @@ export class TargetWindow extends PIXI.Container {
         this.displayHealth(this.targeted);
         this.displayBattery(this.targeted);
         this.displayMovement(this.targeted);
-        this.displayPilot(this.targeted);
+        /*this.displayPilot(this.targeted);
 
         let i = 0;
         for (const item of this.targeted.getComponents(Item)) {
             this.displayItem(item, i++);
-        }
+        }*/
     }
     /**
      * Display ship info
@@ -262,12 +246,12 @@ export class TargetWindow extends PIXI.Container {
      * @param entity Entity to display
      */
     private displayShipInfo(entity: Entity): void {
-        const ship_info = entity.getComponent(ShipInfo);
+        /*const ship_info = entity.getComponent(ShipInfo);
 
         if (ship_info)
         {
             this.target.label.text = ship_info.name;
-        }
+        }*/
     }
     /**
      * Display health of entity
@@ -275,24 +259,9 @@ export class TargetWindow extends PIXI.Container {
      * @param entity Entity to display
      */
     private displayHealth(entity: Entity): void {
-        const health = entity.getComponent(Health);
-
-        /* If this entity has a health component, draw the appropriate health
-         * bar
-         */
-        if (health)
-        {
-            this.health.setColor(Style.colors.green.num);
-            this.health.setPercent(health.current_health / health.max_health);
-            this.health.alpha = 1.0;
-        }
-        /* Otherwise, draw a faded out health bar at 0% */
-        else
-        {
-            this.health.setColor(Style.colors.white.num);
-            this.health.setPercent(0);
-            this.health.alpha = 0.2;
-        }
+        this.health.setColor(Style.colors.white.num);
+        this.health.setPercent(0);
+        this.health.alpha = 0.2;
     }
     /**
      * Display battery & charge info of entity
@@ -300,26 +269,13 @@ export class TargetWindow extends PIXI.Container {
      * @param entity Entity to display
      */
     private displayBattery(entity: Entity): void {
-        const charge = entity.getComponent(Charge);
-
         /* If this entity has a charge component, draw the appropriate charge
          * bar
          */
-        if (charge)
-        {
-            this.battery.setColor(Style.colors.yellow.num);
-            this.battery.setPercent(charge.current_charge / charge.max_charge);
-            this.recharge.label.text = charge.recharge.value().toString();
-            this.battery.alpha = 1.0;
-        }
-        /* Otherwise, draw a faded out charge bar at 0% */
-        else
-        {
-            this.battery.setColor(Style.colors.white.num);
-            this.battery.setPercent(0);
-            this.recharge.label.text = "--";
-            this.battery.alpha = 0.2;
-        }
+        this.battery.setColor(Style.colors.white.num);
+        this.battery.setPercent(0);
+        this.recharge.label.text = "--";
+        this.battery.alpha = 0.2;
     }
     /**
      * Display the movement/deploy cost for this entity
@@ -331,48 +287,28 @@ export class TargetWindow extends PIXI.Container {
          * component AND a deployable component...we're assuming here that we
          * only have one or the other
          */
-        const movement = entity.getComponent(Movement);
-        const deployable = entity.getComponent(Deployable);
+        //const deployable = entity.getComponent(Deployable);
+        const deployable = undefined;
 
-        if (movement)
+        if (deployable)
         {
-            this.move_cost.label.text = movement.move_cost.value().toString();
-            this.move_cost.alpha = 1.0;
-
-            /* If this entity has enough charge to move, display the move button
-             * as active
-             */
-            if (movement.moveable())
-            {
-                this.move_button.texture =
-                    PIXI.Texture.fromFrame("active_move.png");
-
-                if (this.buttons_visible) {
-                    this.move_button.on("click", () => {
-                        this.input_handler.moveButtonClick(entity)
-                    });
-                }
-            }
-        }
-        else if (deployable)
-        {
-            this.move_cost.label.text =
+            /*this.move_cost.label.text =
                 deployable.deploy_cost.value().toString();
-            this.move_cost.alpha = 1.0;
+            this.move_cost.alpha = 1.0;*/
 
             /* Deploying depends on the charge of the entity supplying the
              * deploy zone. So we show the movement button as active always on
              * deployables even though there might not be anywhere valid for
              * the target to deploy to
              */
-            this.move_button.texture =
+            /*this.move_button.texture =
                 PIXI.Texture.fromFrame("active_move.png");
 
             if (this.buttons_visible) {
                 this.move_button.on("click", () => {
                     this.input_handler.moveButtonClick(entity)
                 });
-            }
+            }*/
         }
         else
         {
@@ -389,7 +325,7 @@ export class TargetWindow extends PIXI.Container {
      *
      * @param entity Entity to display
      */
-    private displayPilot(entity: Entity): void {
+/*    private displayPilot(entity: Entity): void {
         const pilot = entity.getComponent(Pilot);
 
         if (pilot)
@@ -408,9 +344,9 @@ export class TargetWindow extends PIXI.Container {
             this.evasion.label.text = "--";
             this.pilot.alpha = 0.2;
         }
-    }
+    }*/
 
-    private displayItem(item: Item, index: number): void {
+    /*private displayItem(item: Item, index: number): void {
         if (item.usable()) {
             this.item_buttons[index].texture =
                 PIXI.Texture.fromFrame("active_item.png");
@@ -418,7 +354,7 @@ export class TargetWindow extends PIXI.Container {
             this.item_buttons[index].texture =
                 PIXI.Texture.fromFrame("inactive_item.png");
         }
-    }
+    }*/
 
     /**
      * Display buttons for this entity

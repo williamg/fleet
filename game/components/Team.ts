@@ -1,16 +1,17 @@
 /**
  * @file game/components/Team.ts
  */
-import { Component } from "../Component"
+import { Component, ComponentID, ComponentType } from "../Component"
 import { Entity } from "../Entity"
+import { ASSERT } from "../util"
 
 export enum TeamID {
     TEAM_1,
     TEAM_2
 };
 
-export class Team extends Component {
-    team: TeamID;
+export class Team  {
+    public team: TeamID;
 
     /**
      * Get the other team
@@ -22,9 +23,7 @@ export class Team extends Component {
         return TeamID.TEAM_1
     }
 
-    constructor(entity: Entity, team: TeamID) {
-        super(entity);
-
+    constructor(id: ComponentID, team: TeamID) {
         this.team = team;
     }
 }

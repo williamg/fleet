@@ -1,19 +1,20 @@
 /**
  * @file game/Action.ts
  */
-import { Entity, EntityID } from "./Entity"
-import { Vec2 } from "./Math"
-import { Item, ItemID } from "./components/Item"
-import { Movement } from "./components/Positioning"
-import { Deployable } from "./components/Deployable"
+import { Entity } from "./Entity"
+import { GameStateChanger } from "./GameState"
+import { Messengers } from "./Messenger"
+import { UpdateComponent } from "./Changes"
+import { Vec2 }  from "./Math"
+
+import { ComponentType } from "./Component"
+import { HexPosition } from "./components/HexPosition"
 
 /**
  * Type of action
  */
 export enum ActionType {
     MOVE,
-    ACTIVATE,
-    DEPLOY,
 };
 /*
  * Actions are the primary interface betwene player and game. Each player's turn
@@ -25,136 +26,67 @@ export abstract class Action {
      * @type {ActionType}
      */
     readonly type: ActionType;
-    /**
-     * Deserialize an action
-     * @return {Action} The deserialized action
-     */
-    public static deserialize(action: string): Action {
-        /* TODO */
-        return new Move(0, new Vec2(0, 0));
-    }
 
     constructor(type: ActionType) {
         this.type = type;
     }
     /**
      * Execute an action
-     * @return {boolean} Whether or not execution was successful
+     * @param {GameStateChanger} changer    Current state changer
+     * @param {Messengers}       messengers Messengers object
      */
-    public abstract execute(): boolean;
-    /**
-     * Serialize an action
-     * @return {string} Serialized action
-     */
-    public serialize(): string {
-        return "";
-    }
-
+    public abstract execute(state: GameStateChanger, messengers: Messengers):
+        void;
 };
 /**
  * Move an entity from one cell to another
  */
 export class Move extends Action {
     /**
-     * ID of ship being moved
-     * @type {EntityID}
+     * Entity being moved
+     * @type {Entity}
      */
-    private readonly _id: EntityID;
+    public readonly entity: Entity;
     /**
      * Location to which the ship is being moved
-     * @type {Vec2}
+     * @type {[number, number]}
      */
-    private readonly _dest: Vec2;
+    public readonly dest: Vec2;
 
-    constructor(id: EntityID, dest: Vec2) {
+    constructor(entity: Entity, dest: Vec2) {
         super(ActionType.MOVE);
 
-        this._id = id;
-        this._dest = dest;
+        this.entity = entity;
+        this.dest = dest;
     }
 
-    execute(): boolean {
-        const entity = Entity.getEntity(this._id);
+    public execute(changer: GameStateChanger, messengers: Messengers): void {
+        let pos = changer.state.getComponent<HexPosition>(
+            this.entity, ComponentType.HEX_POSITION);
 
-        if (entity == null) return false;
+        if (pos == undefined) return;
 
-        const movement_comp = entity.getComponent(Movement);
+        const old_pos = new Vec2(pos!.data.x, pos!.data.y);
 
-        if (movement_comp == null) return false;
+        /* Announce that we're about to move the entity */
+        const res = messengers.beforeMove.publish({
+            entity: this.entity,
+            to: this.dest
+        }, changer);
 
-        return movement_comp.moveTo(this._dest);
-    }
-}
-/**
- * Use a ship's item
- */
-export class Activate extends Action {
-    /**
-     * ID of ship item is equipped on
-     * @type {EntityID}
-     */
-    private readonly _entity_id: EntityID;
-    /**
-     * Slot the desired item is in
-     * @type {number}
-     */
-    private readonly _item_id: ItemID;
-    /**
-     * Target (if required)
-     * @type {EntityID}
-     */
-    private readonly _target: EntityID | null;
+        /* If everyone's okay with us moving the entity, move it, and then tell
+         * everyone we moved it
+         */
+        if (res) {
+            pos = pos.with({ x: this.dest.x, y: this.dest.y });
 
-    constructor(id: EntityID, item: ItemID, target: EntityID | null) {
-        super(ActionType.ACTIVATE);
+            changer.makeChange(new UpdateComponent(pos));
 
-        this._entity_id = id;
-        this._item_id = id;
-        this._target = target;
-    }
-
-    execute(): boolean {
-        const entity = Entity.getEntity(this._entity_id);
-
-        if (entity == null) return false;
-
-        const items = entity.getComponents(Item);
-        let item: Item | null = null;
-
-        for (const i of items) {
-            if (i.id == this._item_id) {
-                item = i;
-                break;
-            }
+            messengers.afterMove.publish({
+                entity: this.entity,
+                from: old_pos
+            }, changer);
         }
-
-        if (item == null) return false;
-
-        return item.use(this._target);
-
     }
 }
 
-export class Deploy extends Action {
-    private _id: EntityID;
-    private _dest: Vec2;
-
-    constructor(id: EntityID, dest: Vec2) {
-        super(ActionType.DEPLOY);
-
-        this._id = id;
-        this._dest = dest;
-    }
-
-    execute(): boolean {
-        const entity = Entity.getEntity(this._id);
-
-        if (entity == null) return false;
-
-        const deployable = entity.getComponent(Deployable);
-
-        if (deployable == null) return false;
-
-        return deployable.deploy(this._dest);
-    }
-}

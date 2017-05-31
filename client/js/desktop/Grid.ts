@@ -7,10 +7,13 @@ import { Style } from "./UI"
 import { GameInputHandler } from "./GameInputHandler"
 import { Vec2 } from "../../../game/Math"
 import { LOG, ASSERT } from "../../../game/util"
-import { HexGrid, hexRound } from "../../../game/HexGrid"
-import { Entity, EntityID } from "../../../game/Entity"
-import { Position } from "../../../game/components/Positioning"
-import { Team, TeamID } from "../../../game/components/Team"
+import { Entity } from "../../../game/Entity"
+import { ComponentType } from "../../../game/Component"
+import { GameState } from "../../../game/GameState"
+import { HexPosition } from "../../../game/components/HexPosition"
+import { GridSystem } from "../../../game/systems/GridSystem"
+
+import { Map } from "immutable"
 
 import * as PIXI from "pixi.js"
 
@@ -25,46 +28,66 @@ function hexToPixel(hex: Vec2): Vec2 {
     return new Vec2(pixelx, pixely);
 }
 
-export class Grid extends PIXI.Container {
-    private readonly grid: HexGrid<EntityID | null>;
-    private readonly friendly: TeamID;
-    private readonly input_handler: GameInputHandler;
-    private readonly graphics: PIXI.Graphics;
+function hexRound(coord: Vec2): Vec2 {
+    const z = -coord.x - coord.y;
 
-    constructor(grid: HexGrid<EntityID | null>, friendly: TeamID,
-        input_handler: GameInputHandler) {
+    var rx = Math.round(coord.x);
+    var ry = Math.round(coord.y);
+    var rz = Math.round(z);
+    let tmp = 0;
+
+    const x_diff = Math.abs(rx - coord.x);
+    const y_diff = Math.abs(ry - coord.y);
+    const z_diff = Math.abs(rz - z);
+
+    if (x_diff > y_diff && x_diff > z_diff) {
+        rx = -ry - rz;
+    } else if (y_diff > z_diff) {
+        ry = -rz - rx;
+    }
+
+    return new Vec2(rx, ry);
+}
+
+export class Grid extends PIXI.Container {
+    private readonly _grid: GridSystem;
+    private readonly _input_handler: GameInputHandler;
+    private readonly _graphics: PIXI.Graphics;
+
+    constructor(grid: GridSystem, input_handler: GameInputHandler) {
         super()
 
-        this.grid = grid;
-        this.friendly = friendly;
-        this.input_handler = input_handler;
+        this._grid = grid;
+        this._input_handler = input_handler;
 
-        this.graphics = new PIXI.Graphics();
-        this.addChild(this.graphics);
+        this._graphics = new PIXI.Graphics();
+        this.addChild(this._graphics);
         this.interactive = true;
 
         this.on("mousemove", this.handleMouseMove.bind(this));
         this.on("click", this.handleClick.bind(this));
     }
 
-    public render(): void {
-        this.graphics.clear();
+    public render(state: GameState): void {
+        this._graphics.clear();
 
-        for (const [coord, entity_id] of this.grid.cells) {
-            this.drawHex(coord);
+        for (const [i, status] of this._grid.grid) {
+            const loc = this._grid.index_map.get(i)!;
+            this.drawHex(loc);
 
-            if (entity_id) {
-                this.drawEntity(entity_id);
+            if (status != "free" && status != "unknown") {
+                this.drawEntity(status, state);
             }
         }
+
     }
 
     private drawHex(coord: Vec2) {
         const pixel = hexToPixel(coord);
 
-        this.graphics.lineStyle(0, 0xFFFFFF, 0);
-        this.graphics.beginFill(0xFFFFFF, 0.5);
-        this.graphics.moveTo(pixel.x + HEX_SIZE, pixel.y);
+        this._graphics.lineStyle(0, 0xFFFFFF, 0);
+        this._graphics.beginFill(0xFFFFFF, 0.5);
+        this._graphics.moveTo(pixel.x + HEX_SIZE, pixel.y);
 
         for (let i = 1; i <= 6; ++i) {
              const deg = 60 * i;
@@ -73,30 +96,23 @@ export class Grid extends PIXI.Container {
              const cornerx = pixel.x + (HEX_SIZE * Math.cos(rad));
              const cornery = pixel.y + (HEX_SIZE * Math.sin(rad));
 
-             this.graphics.lineTo(cornerx, cornery);
+             this._graphics.lineTo(cornerx, cornery);
         }
-        this.graphics.endFill();
+        this._graphics.endFill();
     }
 
-    private drawEntity(entity_id: EntityID) {
-        const entity = Entity.getEntity(entity_id)!;
-
-        const team_component = entity.getComponent(Team)!;
-        const pos_component = entity.getComponent(Position)!;
+    private drawEntity(entity: Entity, state: GameState) {
+        const pos_component =
+            state.getComponent<HexPosition>(entity, ComponentType.HEX_POSITION)!;
 
         ASSERT(pos_component != null);
-        ASSERT(team_component != null);
 
-        const center = hexToPixel(pos_component.position);
+        const center =
+            hexToPixel(new Vec2(pos_component.data.x, pos_component.data.y));
 
-        if (team_component.team == this.friendly) {
-            this.graphics.beginFill(0x00FF00, 1);
-        } else {
-            this.graphics.beginFill(0xFF0000, 1);
-        }
-
-        this.graphics.drawRect(-20 + center.x, -20 + center.y, 40, 40);
-        this.graphics.endFill();
+        this._graphics.beginFill(0xFFFFFF, 1);
+        this._graphics.drawRect(-20 + center.x, -20 + center.y, 40, 40);
+        this._graphics.endFill();
 
     }
 
@@ -111,16 +127,16 @@ export class Grid extends PIXI.Container {
     private handleMouseMove(mouse: PIXI.interaction.InteractionEvent): void {
         const hex = this.hexFromEvent(mouse);
 
-        if (this.grid.inBounds(hex)) {
-            this.input_handler.hexHovered(hex);
+        if (this._grid.inBounds(hex)) {
+            this._input_handler.hexHovered(hex);
         }
     }
 
     private handleClick(mouse: PIXI.interaction.InteractionEvent): void {
         const hex = this.hexFromEvent(mouse);
 
-        if (this.grid.inBounds(hex)) {
-            this.input_handler.hexClicked(hex);
+        if (this._grid.inBounds(hex)) {
+            this._input_handler.hexClicked(hex);
         }
     }
 
