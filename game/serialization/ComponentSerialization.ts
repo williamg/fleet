@@ -5,6 +5,7 @@
 import { Component, ComponentID, ComponentType, ComponentImpl } from "../Component"
 import { HexPositionData } from "../components/HexPosition"
 import { TeamData } from "../components/Team"
+import { NameData } from "../components/Name"
 import { ASSERT } from "../util"
 
 /**
@@ -56,6 +57,9 @@ export function componentToJSON(comp: Component): ComponentJSON {
         case ComponentType.TEAM:
             data = serializeComponent(comp as ComponentImpl<TeamData>);
             break;
+        case ComponentType.NAME:
+            data = serializeComponent(comp as ComponentImpl<NameData>);
+            break;
         default:
             ASSERT(false);
     }
@@ -79,6 +83,8 @@ export function componentFromJSON(comp_json: ComponentJSON): Component {
             return deserializeComponentImpl<HexPositionData>(comp_json.data);
         case ComponentType.TEAM:
             return deserializeComponentImpl<TeamData>(comp_json.data);
+        case ComponentType.NAME:
+            return deserializeComponentImpl<NameData>(comp_json.data);
     }
 
     throw new Error("Unexhaustive component deserialization");

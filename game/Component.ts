@@ -10,7 +10,8 @@ import { Map } from "immutable"
  */
 export enum ComponentType {
     HEX_POSITION,
-    TEAM
+    TEAM,
+    NAME
 };
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of
