@@ -6,7 +6,7 @@
 import { GameState } from "./GameState"
 import { Entity } from "./Entity"
 import { Component, ComponentID } from "./Component"
-import { Team } from "./components/Team"
+import { otherTeam } from "./components/Team"
 import { Seq, Set, Map } from "immutable"
 
 export enum ChangeType {
@@ -304,7 +304,7 @@ export class EndTurn extends Change {
             throw new Error("Attempting to end turn in game not started");
         }
 
-        const current_team = Team.other(state.current_team);
+        const current_team = otherTeam(state.current_team);
 
         return state.with({
             current_team: current_team,
