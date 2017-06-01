@@ -17,12 +17,12 @@ export class FrameSprite extends PIXI.Sprite {
 export const Style = {
     text: {
         normal: new PIXI.TextStyle({
-            fontFamily: "Droid Sans",
+            fontFamily: "Arial",
             fontSize: 14,
             fill: "#FFFFFF",
         }),
         header: new PIXI.TextStyle({
-            fontFamily: "Droid Sans",
+            fontFamily: "Arial",
             fontSize: 14,
             fontWeight: "bold",
             fill: "#FFFFFF",

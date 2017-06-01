@@ -13,6 +13,10 @@ const HEIGHT: number = 1080;
 
 export class UserInterface {
     /**
+     * Pixi context
+     */
+    public readonly app: PIXI.Application;
+    /**
      * Current scene being displayed
      */
     private scene: Scene;
@@ -25,16 +29,11 @@ export class UserInterface {
      */
     private readonly loader: PIXI.loaders.Loader = PIXI.loader;
 
-    /**
-     * Pixi context
-     */
-    private readonly app: PIXI.Application;
-
-    constructor(scene: Scene, callback: () => void) {
+    constructor(app: PIXI.Application, scene: Scene, callback: () => void) {
         this.scene = scene;
 
         /* Initialize PIXI */
-        this.app = new PIXI.Application(WIDTH, HEIGHT);
+        this.app = app;
         document.body.appendChild(this.app.view);
         this.handleResize(window.innerWidth, window.innerHeight);
 

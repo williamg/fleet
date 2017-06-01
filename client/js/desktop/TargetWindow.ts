@@ -1,6 +1,11 @@
 
 import { Style, FrameSprite, Label, Resource } from "./UI"
 import { GameInputHandler } from "./GameInputHandler"
+import { GameState } from "../../../game/GameState"
+import { Component, ComponentType } from "../../../game/Component"
+import { TeamID } from "../../../game/components/Team"
+import { Name } from "../../../game/components/Name"
+import { Deployable } from "../../../game/components/Deployable"
 import { Vec2 } from "../../../game/Math"
 import { LOG } from "../../../game/util"
 import { Entity } from "../../../game/Entity"
@@ -45,7 +50,9 @@ class ItemInfo {
 
 export class TargetWindow extends PIXI.Container {
     /* Target window state */
-    private readonly input_handler: GameInputHandler;
+    private readonly _input_handler: GameInputHandler;
+    private readonly _friendly: TeamID;
+    private _state: GameState;
     private targeted: Entity | undefined;
     private buttons_visible: boolean;
 
@@ -73,10 +80,13 @@ export class TargetWindow extends PIXI.Container {
     private move_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
-    constructor(input_handler: GameInputHandler, target: Entity | undefined) {
+    constructor(input_handler: GameInputHandler, state: GameState,
+                friendly: TeamID) {
         super()
-this.input_handler = input_handler;
-        this.targeted = target;
+        this._input_handler = input_handler;
+
+        this._friendly = friendly;
+        this.targeted = undefined;
         this.buttons_visible = false;
 
         /* Initialize container positions. These stay constant since they're
@@ -185,9 +195,16 @@ this.input_handler = input_handler;
             this.button_tray.addChild(item_button);
         }
 
-        if (this.targeted) {
-            this.setTarget(this.targeted);
-        }
+        /* Event handling */
+        this._input_handler.on("hanger ship click",
+            (data: { entity: Entity, event: MouseEvent }) => {
+            this.setTarget(data.entity);
+        });
+    }
+    public setState(state: GameState): void {
+        this._state = state;
+
+        this.setButtonTrayVisible(this._state.current_team == this._friendly);
     }
 
     public setButtonTrayVisible(visible: boolean): void
@@ -246,12 +263,13 @@ this.input_handler = input_handler;
      * @param entity Entity to display
      */
     private displayShipInfo(entity: Entity): void {
-        /*const ship_info = entity.getComponent(ShipInfo);
+        const ship_name =
+            this._state.getComponent<Name>(entity, ComponentType.NAME);
 
-        if (ship_info)
+        if (ship_name)
         {
-            this.target.label.text = ship_info.name;
-        }*/
+            this.target.label.text = ship_name.data.name;
+        }
     }
     /**
      * Display health of entity
@@ -287,28 +305,28 @@ this.input_handler = input_handler;
          * component AND a deployable component...we're assuming here that we
          * only have one or the other
          */
-        //const deployable = entity.getComponent(Deployable);
-        const deployable = undefined;
+        const deployable = this._state.getComponent<Deployable>(
+            entity, ComponentType.DEPLOYABLE);
 
         if (deployable)
         {
-            /*this.move_cost.label.text =
-                deployable.deploy_cost.value().toString();
-            this.move_cost.alpha = 1.0;*/
+            this.move_cost.label.text =
+                deployable.data.deploy_cost.toString();
+            this.move_cost.alpha = 1.0;
 
             /* Deploying depends on the charge of the entity supplying the
              * deploy zone. So we show the movement button as active always on
              * deployables even though there might not be anywhere valid for
              * the target to deploy to
              */
-            /*this.move_button.texture =
+            this.move_button.texture =
                 PIXI.Texture.fromFrame("active_move.png");
 
             if (this.buttons_visible) {
                 this.move_button.on("click", () => {
-                    this.input_handler.moveButtonClick(entity)
+                    this._input_handler.moveButtonClick(entity)
                 });
-            }*/
+            }
         }
         else
         {

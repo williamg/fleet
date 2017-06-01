@@ -97,8 +97,8 @@ export class Game {
         /* Initialize entities */
         const changer = new GameStateChanger(this._state, this._systems);
         this.initEntities(changer);
-        p1.initEntities(changer);
-        p2.initEntities(changer);
+        p1.initEntities(changer, this._id_pool);
+        p2.initEntities(changer, this._id_pool);
 
         p1.handleChanges(changer.changeset);
         p2.handleChanges(changer.changeset);
@@ -109,18 +109,6 @@ export class Game {
      * @param {GameStateChanger} state Game state
      */
     private initEntities(state: GameStateChanger): void {
-        /* Initialize two entities for testing purposes */
-        const e1 = this._id_pool.entity();
-        const e2 = this._id_pool.entity();
-
-        state.makeChange(new CreateEntity(e1));
-        state.makeChange(new CreateEntity(e2));
-
-        const p1 = newHexPosition(this._id_pool.component(), { x: 0, y: 1 });
-        const p2 = newHexPosition(this._id_pool.component(), { x: 1, y: 0 });
-
-        state.makeChange(new AttachComponent(e1, p1));
-        state.makeChange(new AttachComponent(e2, p2));
     }
     /**
      * Handle a ready from the given player
@@ -148,14 +136,12 @@ export class Game {
      * Start the game
      */
     private startGame(): void {
-        const player = this.getCurrentPlayer();
-
         const mutable_state = new GameStateChanger(this._state, this._systems);
         mutable_state.makeChange(new StartGame());
         this._state = mutable_state.state;
 
         this._turn_timeout = <any>setTimeout(() => {
-            this.endTurn(player.team);
+            this.endTurn(this._state.current_team);
         }, TURN_TIMEOUT);
 
         const [p1, p2] = this._players;
@@ -169,9 +155,7 @@ export class Game {
      * @param {Action} action Action to perform
      */
     public handleAction(team: TeamID, action: Action) {
-        const player = this.getCurrentPlayer();
-
-        if (player.team != team) return;
+        if (team != this._state.current_team) return;
 
         const mutable_state = new GameStateChanger(this._state, this._systems);
 
@@ -187,9 +171,7 @@ export class Game {
      * @param {TeamID} team Team trying to end turn
      */
     public endTurn(team: TeamID): void {
-        const player = this.getCurrentPlayer();
-
-        if (player.team != team) return;
+        if (team != this._state.current_team) return;
 
         if (this._turn_timeout != null) {
             clearTimeout(this._turn_timeout);
@@ -200,22 +182,11 @@ export class Game {
         this._state = mutable_state.state;
 
         this._turn_timeout = <any>setTimeout(() => {
-            this.endTurn(player.team);
+            this.endTurn(this._state.current_team);
         }, TURN_TIMEOUT);
 
         const [p1, p2] = this._players;
         p1.handleChanges(mutable_state.changeset);
         p2.handleChanges(mutable_state.changeset);
-    }
-    /**
-     * Get the current player
-     *
-     * @return {Player} Current player
-     */
-    private getCurrentPlayer(): Player {
-        const [p1, p2] = this._players;
-
-        if (this._state.current_team == p1.team) return p1;
-        return p2;
     }
 }

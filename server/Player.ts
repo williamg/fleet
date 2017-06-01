@@ -7,6 +7,7 @@ import { Vec2 } from "../game/Math"
 import { TeamID } from "../game/components/Team"
 import { Change } from "../game/Changes"
 import { MatchInfo } from "../game/MatchInfo"
+import { IDPool } from "../game/IDPool"
 
 import { EventEmitter } from "events"
 import { List } from "immutable"
@@ -35,8 +36,9 @@ export abstract class Player extends EventEmitter {
      * Initialize the entities for this player
      *
      * @param {GameStateChanger} state Initial state to populate
+     * @param {IDPool}           pool  ID pool
      */
-    public abstract initEntities(state: GameStateChanger): void;
+    public abstract initEntities(state: GameStateChanger, pool: IDPool): void;
     /**
      * Handle a set of changes made to the game state
      * @param {List<Change>} Set of changes

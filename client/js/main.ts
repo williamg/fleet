@@ -14,15 +14,26 @@ import { serializeMessage, deserializeMessage }
     from "../../game/serialization/MessageSerialization"
 import { deserializeChangeset } from "../../game/serialization/ChangeSerialization"
 
-const ws = new WebSocket('ws://localhost:8080');
-ws.addEventListener('message', handleMessage);
 
-const main_menu = new MainMenu();
-const ui = new UserInterface(main_menu, () => {});
+
+/* DEBUG */
+const app = new PIXI.Application(1920, 1080);
+/*const input_handler = new GameInputHandler(app);
+let game_screen = new GameScreen(input_handler, 0,
+                                     new GameState());*/
+//ui.setScene(game_screen!, () => {});
 let did_ready = false;
 let game_screen: GameScreen | undefined = undefined;
 
-function handleMessage(event: MessageEvent) {
+const main_menu = new MainMenu();
+const ui = new UserInterface(app, main_menu, () => {
+    const ws = new WebSocket('ws://localhost:8080');
+    ws.addEventListener('message', (event: MessageEvent) => {
+        handleMessage(ws, event);
+    });
+});
+
+function handleMessage(ws: WebSocket, event: MessageEvent) {
     const msg = deserializeMessage(event.data);
 
     if (msg.type == MessageType.SERVER_STATUS) {
@@ -36,7 +47,7 @@ function handleMessage(event: MessageEvent) {
         main_menu.appendMessage("Match found!");
 
         const match_info = deserializeMatchInfo(msg.data);
-        const input_handler = new GameInputHandler();
+        const input_handler = new GameInputHandler(app);
         game_screen = new GameScreen(input_handler, match_info.friendly,
                                      new GameState());
     } else if (msg.type == MessageType.CHANGESET) {

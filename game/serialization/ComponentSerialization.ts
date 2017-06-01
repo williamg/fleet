@@ -56,13 +56,13 @@ export function componentToJSON(comp: Component): ComponentJSON {
             data = serializeComponentImpl(comp as ComponentImpl<HexPositionData>);
             break;
         case ComponentType.TEAM:
-            data = serializeComponent(comp as ComponentImpl<TeamData>);
+            data = serializeComponentImpl(comp as ComponentImpl<TeamData>);
             break;
         case ComponentType.NAME:
-            data = serializeComponent(comp as ComponentImpl<NameData>);
+            data = serializeComponentImpl(comp as ComponentImpl<NameData>);
             break;
         case ComponentType.DEPLOYABLE:
-            data = serializeComponent(comp as ComponentImpl<DeployableData>);
+            data = serializeComponentImpl(comp as ComponentImpl<DeployableData>);
             break;
         default:
             ASSERT(false);

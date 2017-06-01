@@ -103,7 +103,7 @@ export class GameState extends GameStateRecord {
         const comp_ids = this.entities.get(entity)!;
 
         return Set<Component>(comp_ids.map((id) => {
-            return (this.components.get(id!))!;
+            return (this.components.get(id))!;
         }));
     }
     /**
@@ -116,10 +116,10 @@ export class GameState extends GameStateRecord {
     public getComponent<CompType>(entity: Entity, type: ComponentType):
         CompType | undefined {
         const comps = this.getComponents(entity);
-
-        const res = comps.find((comp) => { return comp!.type == type; });
+        const res = comps.find((comp) => { return comp.type == type; });
 
         if (res) {
+            ASSERT(res.type == type);
             return <CompType><any>res;
         }
 
