@@ -6,8 +6,11 @@ import { TargetWindow } from "./TargetWindow"
 import { HangerWindow } from "./HangerWindow"
 import { Grid } from "./Grid"
 import { Scene } from "../Scene"
+import { GameUIState } from "./GameUIState"
+import { MyTurn } from "./MyTurn"
+import { OtherPlayerTurn } from "./OtherPlayerTurn"
 import { UserInterface, MessageCB } from "../UserInterface"
-import { LOG } from "../../../game/util"
+import { Observer, LOG } from "../../../game/util"
 import { TeamID } from "../../../game/components/Team"
 import { GameState, GameStateChanger } from "../../../game/GameState"
 import { Change } from "../../../game/Changes"
@@ -22,6 +25,10 @@ import { deserializeChangeset } from "../../../game/serialization/ChangeSerializ
 
 import { List } from "immutable"
 
+export type GameUIEvent = "hanger selected" | "hex clicked" | "move" |
+                          "deploy" | "item" | "endturn" | "cancel"
+export type UIObserver = Observer<GameUIEvent>
+
 export class GameScreen extends Scene {
     private readonly _sendMessage: MessageCB;
     private readonly _systems: System[];
@@ -29,11 +36,13 @@ export class GameScreen extends Scene {
     private readonly _friendly: TeamID;
     private readonly _grid_system: GridSystem;
     private readonly _hanger_system: HangerSystem;
+    private readonly _observer: UIObserver;
 
     private _target_window: TargetWindow | undefined;
     private _hanger_window: HangerWindow | undefined;
     private _grid: Grid | undefined;
     private _state: GameState;
+    private _uistate: GameUIState | undefined;
     private _did_ready: boolean;
 
     constructor(ui: UserInterface, sendMessage: MessageCB, friendly: TeamID) {
@@ -47,6 +56,8 @@ export class GameScreen extends Scene {
         this._grid_system = new GridSystem(new IDPool(), this._messengers);
         this._hanger_system = new HangerSystem(new IDPool(), this._messengers);
         this._systems = [ this._grid_system, this._hanger_system ];
+
+        this._observer = new Observer<GameUIEvent>();
     }
 
     public handleMessage(message: Message) {
@@ -66,24 +77,34 @@ export class GameScreen extends Scene {
         this._grid.x = 1920 / 2;
         this._grid.y = 1080 / 2;
 
-        this._target_window = new TargetWindow(this._state, this._friendly);
+        this._target_window = new TargetWindow(this._observer,
+                                               this._state, this._friendly);
         this._target_window.x = 0;
         this._target_window.y = 1080 - this._target_window.height;
 
         this._hanger_window =
-            new HangerWindow(this._ui, this._hanger_system, this._state,
-                             this._friendly);
+            new HangerWindow(this._ui, this._observer, this._hanger_system,
+                             this._state, this._friendly);
         this._hanger_window.x = 1920 - this._hanger_window.width;
         this._hanger_window.y = 1080 - this._hanger_window.height;
-
-        /* Hookup events */
-        this._hanger_window.on(HangerWindow.SHIP_SELECTED, (ent: Entity) => {
-            this._target_window!.setTarget(ent);
-        });
 
         stage.addChild(this._grid);
         stage.addChild(this._target_window);
         stage.addChild(this._hanger_window);
+
+        if (this._state.current_team == this._friendly) {
+            this._uistate =
+                new MyTurn(this.setUIState.bind(this), this._observer,
+                           this._friendly, this._target_window,
+                           this._hanger_window, this._grid);
+        } else {
+            this._uistate =
+                new OtherPlayerTurn(this.setUIState.bind(this), this._observer,
+                                    this._friendly, this._target_window,
+                                     this._hanger_window, this._grid);
+        }
+
+        this._uistate.enter();
 
         callback();
     }
@@ -93,7 +114,14 @@ export class GameScreen extends Scene {
             this._grid.render(this._state);
         }
     }
+    private setUIState(new_state: GameUIState): void {
+        if (this._uistate) {
+            this._uistate.exit();
+        }
 
+        new_state.enter();
+        this._uistate = new_state;
+    }
     private handleChanges(changeset: List<Change>): void {
         const mutable_state = new GameStateChanger(this._state, this._systems);
 

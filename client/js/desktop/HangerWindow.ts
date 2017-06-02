@@ -1,6 +1,7 @@
 
 import { Style, FrameSprite, Label, Resource } from "./UI"
 import { UserInterface } from "../UserInterface"
+import { UIObserver } from "./GameScreen"
 import { clamp, Vec2 } from "../../../game/Math"
 import { LOG } from "../../../game/util"
 import { Entity } from "../../../game/Entity"
@@ -32,16 +33,17 @@ type ShipInfo = {
 };
 
 export class HangerWindow extends FrameSprite {
-    /* Events */
-    public static readonly SHIP_SELECTED = "shipselected";
-    public static readonly END_TURN = "endturn";
-
     /* Hanger window state */
     /**
      * User interface object
      * @type {UserInterface}
      */
     private readonly _ui: UserInterface;
+    /**
+     * UI Observer
+     * @type {UIObserver}
+     */
+    private readonly _observer: UIObserver;
     /**
      * System that keeps track of the entities in this player's hanger
      * @type {HangerSystem}
@@ -89,10 +91,12 @@ export class HangerWindow extends FrameSprite {
     /**
      * Construct a new hanger window
      */
-    constructor(ui: UserInterface, hanger_system: HangerSystem,
-                state: GameState, friendly: TeamID) {
+    constructor(ui: UserInterface, observer: UIObserver,
+                hanger_system: HangerSystem, state: GameState,
+                friendly: TeamID) {
         super("hanger_frame.png");
         this._ui = ui;
+        this._observer = observer;
         this._hanger_system = hanger_system;
         this._friendly = friendly;
         this._top_index = 0;
@@ -243,7 +247,7 @@ export class HangerWindow extends FrameSprite {
                 if (!info.active) return;
 
                 const ent = this._entities.get(this._top_index + i)!;
-                this.emit(HangerWindow.SHIP_SELECTED, ent!);
+                this._observer.emit("hanger selected", ent!);
             });
 
 

@@ -1,6 +1,7 @@
 
 import { Style, FrameSprite, Label, Resource } from "./UI"
 import { GameState } from "../../../game/GameState"
+import { UIObserver } from "./GameScreen"
 import { Component, ComponentType } from "../../../game/Component"
 import { TeamID } from "../../../game/components/Team"
 import { Name } from "../../../game/components/Name"
@@ -48,12 +49,10 @@ class ItemInfo {
 }
 
 export class TargetWindow extends PIXI.Container {
-    /* Events */
-    public static readonly MOVE_CLICKED = "moveclicked";
-
     /* Target window state */
     private readonly _friendly: TeamID;
     private _state: GameState;
+    private _observer: UIObserver;
     private _targeted: Entity | undefined;
     private buttons_visible: boolean;
 
@@ -81,9 +80,10 @@ export class TargetWindow extends PIXI.Container {
     private move_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
-    constructor(state: GameState, friendly: TeamID) {
+    constructor(observer: UIObserver, state: GameState, friendly: TeamID) {
         super()
 
+        this._observer = observer;
         this._friendly = friendly;
         this._targeted = undefined;
         this.buttons_visible = false;
@@ -229,8 +229,7 @@ export class TargetWindow extends PIXI.Container {
             this.displayItem(item, i++);
         }*/
     }
-
-    private setButtonTrayVisible(visible: boolean): void
+    public setButtonTrayVisible(visible: boolean): void
     {
         this.buttons_visible = visible;
 
@@ -322,7 +321,7 @@ export class TargetWindow extends PIXI.Container {
 
             if (this.buttons_visible) {
                 this.move_button.on("click", () => {
-                    this.emit(TargetWindow.MOVE_CLICKED, entity);
+                    this._observer.emit("deploy", entity);
                 });
             }
         }
