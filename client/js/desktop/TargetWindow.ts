@@ -1,6 +1,5 @@
 
 import { Style, FrameSprite, Label, Resource } from "./UI"
-import { GameInputHandler } from "./GameInputHandler"
 import { GameState } from "../../../game/GameState"
 import { Component, ComponentType } from "../../../game/Component"
 import { TeamID } from "../../../game/components/Team"
@@ -49,11 +48,13 @@ class ItemInfo {
 }
 
 export class TargetWindow extends PIXI.Container {
+    /* Events */
+    public static readonly MOVE_CLICKED = "moveclicked";
+
     /* Target window state */
-    private readonly _input_handler: GameInputHandler;
     private readonly _friendly: TeamID;
     private _state: GameState;
-    private targeted: Entity | undefined;
+    private _targeted: Entity | undefined;
     private buttons_visible: boolean;
 
     /* Containers for various sections */
@@ -80,13 +81,11 @@ export class TargetWindow extends PIXI.Container {
     private move_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
-    constructor(input_handler: GameInputHandler, state: GameState,
-                friendly: TeamID) {
+    constructor(state: GameState, friendly: TeamID) {
         super()
-        this._input_handler = input_handler;
 
         this._friendly = friendly;
-        this.targeted = undefined;
+        this._targeted = undefined;
         this.buttons_visible = false;
 
         /* Initialize container positions. These stay constant since they're
@@ -194,20 +193,44 @@ export class TargetWindow extends PIXI.Container {
             this.item_buttons.push(item_button);
             this.button_tray.addChild(item_button);
         }
-
-        /* Event handling */
-        this._input_handler.on("hanger ship click",
-            (data: { entity: Entity, event: MouseEvent }) => {
-            this.setTarget(data.entity);
-        });
     }
     public setState(state: GameState): void {
         this._state = state;
 
         this.setButtonTrayVisible(this._state.current_team == this._friendly);
+
+        if (this._targeted) {
+            this.setTarget(this._targeted);
+        }
+    }
+    /**
+     * Update the currently displayed target
+     * 
+     * @param entity Entity to display
+     */
+    public setTarget(entity: Entity): void {
+        if (entity != this._targeted && this._targeted)
+        {
+            /* TODO: Uninstall event listeners, reinstall if this is a friendly
+             * target
+             */
+        }
+
+        this._targeted = entity;
+
+        this.displayShipInfo(this._targeted);
+        this.displayHealth(this._targeted);
+        this.displayBattery(this._targeted);
+        this.displayMovement(this._targeted);
+        /*this.displayPilot(this._targeted);
+
+        let i = 0;
+        for (const item of this._targeted.getComponents(Item)) {
+            this.displayItem(item, i++);
+        }*/
     }
 
-    public setButtonTrayVisible(visible: boolean): void
+    private setButtonTrayVisible(visible: boolean): void
     {
         this.buttons_visible = visible;
 
@@ -230,32 +253,7 @@ export class TargetWindow extends PIXI.Container {
             this.move_button.buttonMode = true;
         }
     }
-    /**
-     * Update the currently displayed target
-     * 
-     * @param entity Entity to display
-     */
-    public setTarget(entity: Entity): void {
-        if (entity != this.targeted && this.targeted)
-        {
-            /* TODO: Uninstall event listeners, reinstall if this is a friendly
-             * target
-             */
-        }
 
-        this.targeted = entity;
-
-        this.displayShipInfo(this.targeted);
-        this.displayHealth(this.targeted);
-        this.displayBattery(this.targeted);
-        this.displayMovement(this.targeted);
-        /*this.displayPilot(this.targeted);
-
-        let i = 0;
-        for (const item of this.targeted.getComponents(Item)) {
-            this.displayItem(item, i++);
-        }*/
-    }
     /**
      * Display ship info
      * TODO: Display class
@@ -324,7 +322,7 @@ export class TargetWindow extends PIXI.Container {
 
             if (this.buttons_visible) {
                 this.move_button.on("click", () => {
-                    this._input_handler.moveButtonClick(entity)
+                    this.emit(TargetWindow.MOVE_CLICKED, entity);
                 });
             }
         }

@@ -4,7 +4,6 @@
  */
 
 import { Style } from "./UI"
-import { GameInputHandler } from "./GameInputHandler"
 import { Vec2 } from "../../../game/Math"
 import { LOG, ASSERT } from "../../../game/util"
 import { Entity } from "../../../game/Entity"
@@ -50,15 +49,16 @@ function hexRound(coord: Vec2): Vec2 {
 }
 
 export class Grid extends PIXI.Container {
+    /* Events */
+    public static readonly HEX_CLICKED: "hexclicked";
+
     private readonly _grid: GridSystem;
-    private readonly _input_handler: GameInputHandler;
     private readonly _graphics: PIXI.Graphics;
 
-    constructor(grid: GridSystem, input_handler: GameInputHandler) {
+    constructor(grid: GridSystem) {
         super()
 
         this._grid = grid;
-        this._input_handler = input_handler;
 
         this._graphics = new PIXI.Graphics();
         this.addChild(this._graphics);
@@ -128,7 +128,7 @@ export class Grid extends PIXI.Container {
         const hex = this.hexFromEvent(mouse);
 
         if (this._grid.inBounds(hex)) {
-            this._input_handler.hexHovered(hex);
+            /* Handle hex hover */
         }
     }
 
@@ -136,7 +136,7 @@ export class Grid extends PIXI.Container {
         const hex = this.hexFromEvent(mouse);
 
         if (this._grid.inBounds(hex)) {
-            this._input_handler.hexClicked(hex);
+            this.emit(Grid.HEX_CLICKED, hex);
         }
     }
 

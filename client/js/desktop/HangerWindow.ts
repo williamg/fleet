@@ -1,6 +1,6 @@
 
 import { Style, FrameSprite, Label, Resource } from "./UI"
-import { GameInputHandler } from "./GameInputHandler"
+import { UserInterface } from "../UserInterface"
 import { clamp, Vec2 } from "../../../game/Math"
 import { LOG } from "../../../game/util"
 import { Entity } from "../../../game/Entity"
@@ -14,7 +14,7 @@ import { List } from "immutable"
 import * as PIXI from "pixi.js"
 
 /* Geometry/layout constants */
-const GENERAL = new Vec2(15, 15);
+const SHIP_LIST = new Vec2(15, 15);
 const HANGER_LABEL = new Vec2(10, 10);
 
 const NUM_SHIPS = 5;
@@ -25,88 +25,103 @@ const SHIP_WIDTH = 260;
 const SHIP_ICON = new Vec2(5, 10);
 const SHIP_NAME = new Vec2(40, 10);
 
-export class HangerWindow extends PIXI.Container {
+type ShipInfo = {
+    label: Label;
+    hovered: boolean;
+    active: boolean;
+};
+
+export class HangerWindow extends FrameSprite {
+    /* Events */
+    public static readonly SHIP_SELECTED = "shipselected";
+    public static readonly END_TURN = "endturn";
+
     /* Hanger window state */
-    private readonly _input_handler: GameInputHandler;
+    /**
+     * User interface object
+     * @type {UserInterface}
+     */
+    private readonly _ui: UserInterface;
+    /**
+     * System that keeps track of the entities in this player's hanger
+     * @type {HangerSystem}
+     */
     private readonly _hanger_system: HangerSystem;
+    /**
+     * ID of team that is considered friendly
+     * @type {TeamID}
+     */
     private readonly _friendly: TeamID;
+    /**
+     * Most recent game state
+     * @type {GameState}
+     */
     private _state: GameState;
+    /**
+     * Index in the entity list that is currently in the top most position on
+     * the ship list
+     * @type {number}
+     */
     private _top_index: number;
-    private _highlighted_index: number;
+    /**
+     * Data currently displayed for the NUM_SHIPS visible
+     * @type {ShipInfo[]}
+     */
+    private _ship_infos: ShipInfo[];
+    /**
+     * Cached list of entities in our hanger. Updated on every call to setState
+     * @type {List<Entity>}
+     */
+    private _entities: List<Entity>;
 
     /* Containers for various sections */
-    private _graphics: PIXI.Graphics = new PIXI.Graphics();
-    private _display: FrameSprite;
-    private _general: PIXI.Container;
-    private _ship_wrappers: PIXI.Container[];
-
-    /* Labels */
-
-    /* Buttons */
-
-    constructor(input_handler: GameInputHandler, hanger_system: HangerSystem,
+    /**
+     * Container for the list of ships
+     * @type {PIXI.Container}
+     */
+    private _ship_list: PIXI.Container;
+    /**
+     * Containers for each individual ship. Graphics to facilitate interactivity
+     * and highlighting
+     * @type {PIXI.Graphics}
+     */
+    private _ship_wrappers: PIXI.Graphics[];
+    /**
+     * Construct a new hanger window
+     */
+    constructor(ui: UserInterface, hanger_system: HangerSystem,
                 state: GameState, friendly: TeamID) {
-        super()
-        this._input_handler = input_handler;
+        super("hanger_frame.png");
+        this._ui = ui;
         this._hanger_system = hanger_system;
         this._friendly = friendly;
-        this._state = state;
         this._top_index = 0;
-        this._highlighted_index = -1;
 
-        /* Initialize container positions. These stay constant since they're
-         * relative to this component */
-        this._display = new FrameSprite("hanger_frame.png");
-        this._display.interactive = true;
+        [this._ship_wrappers, this._ship_infos] = this.initShipSlots();
 
-        this._general = new PIXI.Container();
-        this._general.x = GENERAL.x;
-        this._general.y = GENERAL.y;
+        this._ship_list = new PIXI.Container();
+        this._ship_list.x = SHIP_LIST.x;
+        this._ship_list.y = SHIP_LIST.y;
 
-        this._ship_wrappers = [];
-
-        for (let i = 0; i < NUM_SHIPS; ++i)
-        {
-            const ship_wrapper = new PIXI.Container();
-            ship_wrapper.x = 0;
-            ship_wrapper.y = SHIP_OFFSET + (SHIP_HEIGHT * i);
-
-            this._ship_wrappers.push(ship_wrapper);
-            this._general.addChild(ship_wrapper);
+        for (const wrapper of this._ship_wrappers) {
+            this._ship_list.addChild(wrapper);
         }
 
-        /* Initialize labels with placeholder values */
+        this.setState(state);
+
+        /* Hanger label */
         const hanger_label =
             new Label(undefined, "Hanger", Style.text.header, HANGER_LABEL);
+        this._ship_list.addChild(hanger_label);
 
-        this._general.addChild(hanger_label);
-        this._general.addChild(this._graphics);
-
-        this.addChild(this._display, this._general);
-
-        /* Publish events */
-        this._display.on("click", (e: PIXI.interaction.InteractionEvent) => {
-            const me = e.data.originalEvent as MouseEvent;
-            const ent = this.entityFromMouseEvent(me);
-
-            if (ent != undefined) {
-                this._input_handler.hangerShipClicked(ent, e);
-            }
-        });
-        this._display.on("mousemove", (e: PIXI.interaction.InteractionEvent) => {
-            const me = e.data.originalEvent as MouseEvent;
-            const ent = this.entityFromMouseEvent(me);
-
-            if (ent != undefined) {
-                this._input_handler.hangerShipHovered(ent, e);
-            }
-        });
+        this.addChild(this._ship_list);
 
         /* Handle events */
-        this._input_handler.on("wheel", (e: WheelEvent) => {
-            const point = this._input_handler.toCanvasCoords(e.pageX, e.pageY);
+        this._ui.app.view.addEventListener("wheel", (e: WheelEvent) => {
+            const point = this._ui.toCanvasCoords(e.pageX, e.pageY);
             const pixipoint = new PIXI.Point(point.x, point.y);
-            if (!this._display.containsPoint(pixipoint)) return;
+
+            if (!this.containsPoint(pixipoint)) return;
 
             if (e.deltaY < -1) {
                 this.scrollHangerList(-1);
@@ -114,54 +129,17 @@ export class HangerWindow extends PIXI.Container {
                 this.scrollHangerList(1);
             }
         });
-        this._input_handler.on("hanger ship hover", (data: { entity: Entity,
-            event: MouseEvent }) => {
-            this.highlightShip(data.event);
-        });
     }
-
+    /**
+     * Update the state of the HangerWindow
+     *
+     * @param {GameState} state
+     */
     public setState(state: GameState) {
         this._state = state;
-    }
-    private entityFromMouseEvent(event: MouseEvent): Entity | undefined {
-        const global =
-            this._input_handler.toCanvasCoords(event.pageX, event.pageY);
-        const slot_index = this.indexUnderPoint(global);
 
-        if (slot_index < 0) return;
-
-        const entities = this.entities();
-        const index = slot_index + this._top_index;
-
-        return entities.get(index);
-    }
-    private indexUnderPoint(global: Vec2): number {
-        /* ICKY coordinate conversions, doesn't handle rotation */
-        const point = global.sub(new Vec2(this.x, this.y))
-                            .sub(new Vec2(this._display.x, this._display.y))
-                            .sub(new Vec2(this._general.x, this._general.y));
-
-
-        if (point.x < 0 || point.x > SHIP_WIDTH) return -1;
-
-        const index = Math.floor((point.y - SHIP_OFFSET) / SHIP_HEIGHT);
-
-        if (index < 0 || index >= NUM_SHIPS) return - 1;
-
-        return index;
-    }
-
-    private scrollHangerList(delta: number): void {
-        /* Get local coordinates */
-        const num_entities = this.entities().size;
-        const upper = Math.max(0, num_entities - NUM_SHIPS + 1);
-
-        this._top_index = this._top_index + delta;
-        this._top_index = clamp(this._top_index, 0, upper);
-    }
-
-    private entities(): List<Entity> {
-        const entities = this._hanger_system.entities.filter((ent: Entity) => {
+        /* Recompute entities */
+        this._entities = this._hanger_system.entities.filter((ent: Entity) => {
             const team =
                 this._state.getComponent<Team>(ent, ComponentType.TEAM);
             const name =
@@ -174,48 +152,105 @@ export class HangerWindow extends PIXI.Container {
             return team.data.team == this._friendly;
         });
 
-        return entities;
+        this.updateLabels();
     }
+    /**
+     * Scroll the hanger list by a given amount
+     *
+     * @param {number} Number of entries to scroll by
+     */
+    private scrollHangerList(delta: number): void {
+        /* Get local coordinates */
+        const num_entities = this._entities.size;
+        const upper = Math.max(0, num_entities - NUM_SHIPS);
 
-    private highlightShip(e: MouseEvent): void {
-        const global = this._input_handler.toCanvasCoords(e.pageX, e.pageY);
-        const index = this.indexUnderPoint(global);
+        this._top_index = this._top_index + delta;
+        this._top_index = clamp(this._top_index, 0, upper);
 
-        if (index == this._highlighted_index) return;
-
-        this._highlighted_index = index;
-
+        this.updateLabels();
     }
-
-    public render(): void {
-        this._graphics.clear();
-
-        if (this._highlighted_index >= 0) {
-            const draw_y = SHIP_OFFSET + (this._highlighted_index * SHIP_HEIGHT);
-
-            this._graphics.beginFill(0xFFFFFF, 0.15);
-            this._graphics.drawRect(-1, draw_y, SHIP_WIDTH, SHIP_HEIGHT);
-            this._graphics.endFill();
-        }
-
-        const entities = this.entities();
-
+    /**
+     * Update labels for the current top_index
+     */
+    private updateLabels(): void {
         for (let i = 0; i < NUM_SHIPS; ++i) {
-            this._ship_wrappers[i].removeChildren();
-
             const index = this._top_index + i;
 
-            if (index >= entities.size) {
-                break;
+            if (index < this._entities.size) {
+                const ent = this._entities.get(index)!;
+                const name =
+                    this._state.getComponent<Name>(ent, ComponentType.NAME)!;
+
+                this._ship_infos[i].active = true;
+                this._ship_infos[i].label.label.text = name.data.name;
+                this._ship_wrappers[i].buttonMode = true;
+            } else {
+                this._ship_infos[i].active = false;
+                this._ship_infos[i].label.label.text = "";
+                this._ship_wrappers[i].buttonMode = false;
             }
-
-            const ent = entities.get(index)!;
-            const name = this._state.getComponent<Name>(ent, ComponentType.NAME)!;
-
-            const n = (this._top_index + i).toString();
-            const ship_name = new Label(undefined, name.data.name,
-                Style.text.normal, SHIP_NAME);
-            this._ship_wrappers[i].addChild(ship_name);
         }
+    }
+    /**
+     * Initialize the structures that make up the ship list. Also installs
+     * event handlers for hover & click
+     * @return {[PIXI.Graphics[], ShipInfo[]]} Containers and info objects
+     */
+    private initShipSlots(): [PIXI.Graphics[], ShipInfo[]] {
+        const wrappers: PIXI.Graphics[] = [];
+        const infos: ShipInfo[] = [];
+
+        for (let i = 0; i < NUM_SHIPS; ++i)
+        {
+            /* Setup geometry */
+            const ship_wrapper = new PIXI.Graphics();
+            ship_wrapper.x = 0;
+            ship_wrapper.y = SHIP_OFFSET + (SHIP_HEIGHT * i);
+            ship_wrapper.interactive = true;
+            ship_wrapper.hitArea =
+                new PIXI.Rectangle(0, 0, SHIP_WIDTH, SHIP_HEIGHT);
+
+            const info: ShipInfo = {
+                label: new Label(undefined, "", Style.text.normal, SHIP_NAME),
+                hovered: false,
+                active: false
+            };
+            ship_wrapper.addChild(info.label);
+
+            /* Highlight on hover */
+            ship_wrapper.on("mouseover", () => {
+                if (info.hovered) return;
+                if (!info.active) return;
+
+                info.hovered = true;
+                ship_wrapper.clear();
+                ship_wrapper.beginFill(0xFFFFFF, 0.15);
+                ship_wrapper.drawRect(0, 0, SHIP_WIDTH, SHIP_HEIGHT);
+                ship_wrapper.endFill();
+            });
+
+            /* Clear on unhover */
+            ship_wrapper.on("mouseout", () => {
+                if (!info.hovered) return;
+                if (!info.active) return;
+
+                info.hovered = false;
+                ship_wrapper.clear();
+            });
+
+            /* Emit on click */
+            ship_wrapper.on("click", () => {
+                if (!info.active) return;
+
+                const ent = this._entities.get(this._top_index + i)!;
+                this.emit(HangerWindow.SHIP_SELECTED, ent!);
+            });
+
+
+            wrappers.push(ship_wrapper);
+            infos.push(info);
+        }
+
+        return [wrappers, infos];
     }
 }
