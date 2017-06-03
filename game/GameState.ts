@@ -46,7 +46,7 @@ export class GameState extends GameStateRecord {
      * Maps entities to their components.
      *
      * The map is to ComponentIDs rather than Components to make serialization
-     * easy in the case that one component needs to reference another
+     * easy in the case that one component needs to reference another.
      * IDs are constant throughout serialization whereas references are not.
      *
      * @type {Map<Entity, Set<ComponentID>>}

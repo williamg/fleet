@@ -60,11 +60,12 @@ export class GridSystem extends System {
      *
      * @param {IDPool}             id_pool    ID Pool
      * @param {Messengers}         messengers Messengers
+     * @param {GameState}          state      GameState
      * @param {[number, number][]} tiles      Map/tile coordinates
      */
-    constructor(id_pool: IDPool, messengers: Messengers,
+    constructor(id_pool: IDPool, messengers: Messengers, state: GameState,
                 tiles: [number, number][] = MAP) {
-        super(id_pool, messengers);
+        super(id_pool, messengers, state);
 
         /* Initialize empty grid */
         this._index_map = List<Vec2>(tiles.map(([x, y]) => {
@@ -90,6 +91,15 @@ export class GridSystem extends System {
     }
     get index_map(): List<Vec2> {
         return this._index_map;
+    }
+    public occupancyStatus(pos: Vec2): OccupancyStatus {
+        const index = this._index_map.findIndex((loc) => {
+            return pos.equals(loc);
+        });
+
+        if (index < 0) return "unknown";
+
+        return this._grid.get(index)!;
     }
     public inBounds(pos: Vec2): boolean {
         return this._index_map.findIndex((loc) => {

@@ -7,6 +7,7 @@ import { HexPositionData } from "../components/HexPosition"
 import { TeamData } from "../components/Team"
 import { NameData } from "../components/Name"
 import { DeployableData } from "../components/Deployable"
+import { DeployZoneData } from "../components/DeployZone"
 import { ASSERT } from "../util"
 
 /**
@@ -64,6 +65,9 @@ export function componentToJSON(comp: Component): ComponentJSON {
         case ComponentType.DEPLOYABLE:
             data = serializeComponentImpl(comp as ComponentImpl<DeployableData>);
             break;
+        case ComponentType.DEPLOY_ZONE:
+            data = serializeComponentImpl(comp as ComponentImpl<DeployZoneData>);
+            break;
         default:
             ASSERT(false);
     }
@@ -91,6 +95,8 @@ export function componentFromJSON(comp_json: ComponentJSON): Component {
             return deserializeComponentImpl<NameData>(comp_json.data);
         case ComponentType.DEPLOYABLE:
             return deserializeComponentImpl<DeployableData>(comp_json.data);
+        case ComponentType.DEPLOY_ZONE:
+            return deserializeComponentImpl<DeployZoneData>(comp_json.data);
     }
 
     throw new Error("Unexhaustive component deserialization");

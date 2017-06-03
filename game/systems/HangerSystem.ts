@@ -20,8 +20,8 @@ export class HangerSystem extends System {
      */
     private _entities: List<Entity> = List<Entity>();
 
-    constructor(id_pool: IDPool, messengers: Messengers) {
-        super(id_pool, messengers);
+    constructor(id_pool: IDPool, messengers: Messengers, state: GameState) {
+        super(id_pool, messengers, state);
     }
     /**
      * Entity getter

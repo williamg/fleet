@@ -4,13 +4,18 @@
  */
 
 import { Style } from "./UI"
+import { UIObserver } from "./GameScreen"
+
 import { Vec2 } from "../../../game/Math"
 import { LOG, ASSERT } from "../../../game/util"
 import { Entity } from "../../../game/Entity"
 import { ComponentType } from "../../../game/Component"
 import { GameState } from "../../../game/GameState"
-import { HexPosition } from "../../../game/components/HexPosition"
 import { GridSystem } from "../../../game/systems/GridSystem"
+
+import { HexPosition } from "../../../game/components/HexPosition"
+import { DeployZone } from "../../../game/components/DeployZone"
+import { Team, TeamID } from "../../../game/components/Team"
 
 import { Map } from "immutable"
 
@@ -31,8 +36,8 @@ function hexRound(coord: Vec2): Vec2 {
     const z = -coord.x - coord.y;
 
     var rx = Math.round(coord.x);
-    var ry = Math.round(coord.y);
-    var rz = Math.round(z);
+    var ry = Math.round(z);
+    var rz = Math.round(coord.y);
     let tmp = 0;
 
     const x_diff = Math.abs(rx - coord.x);
@@ -45,22 +50,32 @@ function hexRound(coord: Vec2): Vec2 {
         ry = -rz - rx;
     }
 
-    return new Vec2(rx, ry);
+    return new Vec2(rx, rz);
 }
 
+export type HexStyle = {
+    color: number,
+    alpha: number
+};
+
 export class Grid extends PIXI.Container {
-    /* Events */
-    public static readonly HEX_CLICKED: "hexclicked";
-
     private readonly _grid: GridSystem;
+    private readonly _friendly: TeamID;
     private readonly _graphics: PIXI.Graphics;
+    private readonly _observer: UIObserver;
+    private _styles: Map<number, HexStyle>
 
-    constructor(grid: GridSystem) {
+    constructor(grid: GridSystem, observer: UIObserver, friendly: TeamID) {
         super()
 
         this._grid = grid;
-
+        this._observer = observer;
+        this._friendly = friendly;
         this._graphics = new PIXI.Graphics();
+
+        this._styles = Map<number, HexStyle>();
+        this.clearHexStyles();
+
         this.addChild(this._graphics);
         this.interactive = true;
 
@@ -81,12 +96,30 @@ export class Grid extends PIXI.Container {
         }
 
     }
+    public clearHexStyles(): void {
+        for(let i = 0; i < this._grid.index_map.size; ++i) {
+            this._styles = this._styles.set(i, { color: 0xFFFFFF, alpha: 0.5 });
+        }
+    }
 
-    private drawHex(coord: Vec2) {
-        const pixel = hexToPixel(coord);
+    public setHexStyle(hex: Vec2, style: HexStyle): void {
+        const index = this._grid.index_map.findIndex(hex.equals.bind(hex));
+
+        ASSERT(index >= 0);
+
+        this._styles = this._styles.set(index, style);
+    }
+
+    private drawHex(hex: Vec2) {
+        const index = this._grid.index_map.findIndex(hex.equals.bind(hex));
+
+        ASSERT(index >= 0);
+
+        const style = this._styles.get(index)!;
+        const pixel = hexToPixel(hex);
 
         this._graphics.lineStyle(0, 0xFFFFFF, 0);
-        this._graphics.beginFill(0xFFFFFF, 0.5);
+        this._graphics.beginFill(style.color, style.alpha);
         this._graphics.moveTo(pixel.x + HEX_SIZE, pixel.y);
 
         for (let i = 1; i <= 6; ++i) {
@@ -104,14 +137,23 @@ export class Grid extends PIXI.Container {
     private drawEntity(entity: Entity, state: GameState) {
         const pos_component =
             state.getComponent<HexPosition>(entity, ComponentType.HEX_POSITION)!;
+        const deploy_zone_comp =
+            state.getComponent<DeployZone>(entity, ComponentType.DEPLOY_ZONE);
+        const team_comp =
+            state.getComponent<Team>(entity, ComponentType.TEAM)!;
 
         ASSERT(pos_component != null);
 
-        const center =
-            hexToPixel(new Vec2(pos_component.data.x, pos_component.data.y));
+        const center = hexToPixel(new Vec2(pos_component.data.x,
+                                           pos_component.data.y));
+        const color = (team_comp.data.team == this._friendly) ? 0x00FF00 : 0xFF0000
 
-        this._graphics.beginFill(0xFFFFFF, 1);
-        this._graphics.drawRect(-20 + center.x, -20 + center.y, 40, 40);
+        this._graphics.beginFill(color, 1);
+        if (deploy_zone_comp) {
+            this._graphics.drawCircle(center.x, center.y, 20);
+        } else {
+            this._graphics.drawRect(-20 + center.x, -20 + center.y, 40, 40);
+        }
         this._graphics.endFill();
 
     }
@@ -119,8 +161,8 @@ export class Grid extends PIXI.Container {
     private hexFromEvent(event: PIXI.interaction.InteractionEvent): Vec2 {
         const loc = event.data.getLocalPosition(this);
 
-        const hexx = (loc.x * Math.sqrt(3)/3 - loc.y / 3) / HEX_OUTER_SIZE;
-        const hexy = loc.y * (2/3) / HEX_OUTER_SIZE;
+        const hexx = loc.x * (2/3) / HEX_OUTER_SIZE;
+        const hexy = ((-loc.x / 3) + (loc.y * Math.sqrt(3)/3)) / HEX_OUTER_SIZE;
         return hexRound(new Vec2(hexx, hexy));
     }
 
@@ -136,7 +178,7 @@ export class Grid extends PIXI.Container {
         const hex = this.hexFromEvent(mouse);
 
         if (this._grid.inBounds(hex)) {
-            this.emit(Grid.HEX_CLICKED, hex);
+            this._observer.emit("hex clicked", hex);
         }
     }
 

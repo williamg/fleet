@@ -3,7 +3,7 @@
  * Functions for (de)serializing actions
  */
 
-import { Action, ActionType, Move } from "../Action"
+import { Action, ActionType, Move, Deploy } from "../Action"
 import { Entity } from "../Entity"
 import { Vec2 } from "../Math"
 
@@ -19,6 +19,12 @@ export type MoveJSON = {
     entity: Entity,
     dest: [number, number]
 }
+
+export type DeployJSON = {
+    entity: Entity,
+    deploy: Entity,
+    index: number
+};
 /**
  * Represent the action as a string
  *
@@ -51,6 +57,9 @@ export function actionToJSON(action: Action): ActionJSON {
         case ActionType.MOVE:
             data = serializeMove(action as Move);
             break;
+        case ActionType.DEPLOY:
+            data = serializeDeploy(action as Deploy);
+            break;
     }
 
     return {
@@ -69,6 +78,8 @@ export function actionFromJSON(action_json: ActionJSON): Action {
     switch (action_json.type) {
         case ActionType.MOVE:
             return deserializeMove(action_json.data);
+        case ActionType.DEPLOY:
+            return deserializeDeploy(action_json.data);
     }
 
     throw new Error("Unexhaustive action deserialization");
@@ -114,4 +125,47 @@ export function moveToJSON(move: Move): MoveJSON {
 export function moveFromJSON(move_json: MoveJSON): Move {
     const [x, y] = move_json.dest;
     return new Move(move_json.entity, new Vec2(x, y));
+}
+/**
+ * Represent the deploy as a string
+ *
+ * @param   {Deploy}   deploy Deploy to serialize
+ * @returns {string}          Serialize deploy
+ */
+export function serializeDeploy(deploy: Deploy): string {
+    return JSON.stringify(deployToJSON(deploy));
+}
+/**
+ * Convert a serialized deploy into an instance
+ *
+ * @param  {string} deploy_str Serialize Deploy
+ * @return {Deploy}            Deploy instance
+ * @throws {Error}             On invalid serialization input
+ */
+export function deserializeDeploy(deploy_str: string): Deploy  {
+    return deployFromJSON(JSON.parse(deploy_str));
+}
+/**
+ * Represent deploy as JSON
+ *
+ * @param   {Deploy}     deploy Deploy to serialize
+ * @returns {DeployJSON}        JSON representation of deploy
+ */
+export function deployToJSON(deploy: Deploy): DeployJSON {
+    return {
+        entity: deploy.entity,
+        deploy: deploy.deploy_entity,
+        index: deploy.target_index
+    };
+}
+/**
+ * Convert a JSONified deploy into an instance
+ *
+ * @param  {string} deploy_json JSONified Deploy
+ * @return {Deploy}             Deploy instance
+ * @throws {Error}              On invalid serialization input
+ */
+export function deployFromJSON(deploy_json: DeployJSON): Deploy {
+    return new Deploy(deploy_json.entity,
+                      deploy_json.deploy, deploy_json.index);
 }

@@ -41,6 +41,14 @@ const BUTTON_OUT = new Vec2(280, 78);
 const MOVE_BUTTON = new Vec2(0, 0);
 const ITEM_BUTTONS = [ new Vec2(0, 122), new Vec2(0, 162), new Vec2(0, 202) ];
 
+export enum CancelPos {
+    MOVE,
+    ITEM_1,
+    ITEM_2,
+    ITEM_3,
+    HIDDEN
+};
+
 class ItemInfo {
     name: Label;
     cost: Label;
@@ -78,6 +86,7 @@ export class TargetWindow extends PIXI.Container {
 
     /* Buttons */
     private move_button: FrameSprite;
+    private cancel_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
     constructor(observer: UIObserver, state: GameState, friendly: TeamID) {
@@ -193,11 +202,12 @@ export class TargetWindow extends PIXI.Container {
             this.item_buttons.push(item_button);
             this.button_tray.addChild(item_button);
         }
+
+        /* Cancel button ISN'T shown by default */
+        this.cancel_button = new FrameSprite("cancel.png");
     }
     public setState(state: GameState): void {
         this._state = state;
-
-        this.setButtonTrayVisible(this._state.current_team == this._friendly);
 
         if (this._targeted) {
             this.setTarget(this._targeted);
@@ -244,15 +254,39 @@ export class TargetWindow extends PIXI.Container {
             this.button_tray.y = BUTTON_IN.y;
 
             this.move_button.interactive = false;
+            this.cancel_button.interactive = false;
         } else {
             this.button_tray.x = BUTTON_OUT.x;
             this.button_tray.y = BUTTON_OUT.y;
 
             this.move_button.interactive = true;
             this.move_button.buttonMode = true;
+            this.cancel_button.interactive = true;
+            this.cancel_button.buttonMode = true;
+
+            this.cancel_button.on("click", () => {
+                this._observer.emit("cancel");
+            });
+        }
+
+        /* Update button displays */
+        if (this._targeted) {
+            this.displayMovement(this._targeted);
         }
     }
+    public setCancelButton(pos: CancelPos): void {
+        if (pos == CancelPos.HIDDEN) {
+            this.button_tray.removeChild(this.cancel_button);
+            return;
+        }
 
+        this.button_tray.addChild(this.cancel_button);
+
+        if (pos == CancelPos.MOVE) {
+            this.cancel_button.x = MOVE_BUTTON.x;
+            this.cancel_button.y = MOVE_BUTTON.y;
+        }
+    }
     /**
      * Display ship info
      * TODO: Display class

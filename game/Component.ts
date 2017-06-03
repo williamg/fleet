@@ -12,7 +12,8 @@ export enum ComponentType {
     HEX_POSITION,
     TEAM,
     NAME,
-    DEPLOYABLE
+    DEPLOYABLE,
+    DEPLOY_ZONE
 };
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of

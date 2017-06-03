@@ -208,10 +208,9 @@ export class DetachComponent extends Change {
                             "doesn't exist");
         }
 
-        const comp_ids =
-            state.entities.get(this.entity)!.delete(this.component.id)!;
+        let comp_ids = state.entities.get(this.entity)!;
 
-        if (!comp_ids.includes(this.component.id)) {
+        if (!comp_ids.contains(this.component.id)) {
             throw new Error("Attempting to detach component that doesn't " +
                             "exist on entity");
         } else if (!state.components.has(this.component.id)) {
@@ -219,6 +218,7 @@ export class DetachComponent extends Change {
                             "exist");
         }
 
+        comp_ids = comp_ids.delete(this.component.id);
         const entities = state.entities.set(this.entity, comp_ids);
         const components = state.components.delete(this.component.id);
 

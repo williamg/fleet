@@ -6,25 +6,43 @@
  * is the base class for each one of those states
  */
 
-import { GameState} from "../../../game/GameState"
-import { UIObserver } from "./GameScreen"
+import { UIObserver, UISystems } from "./GameScreen"
+import { HangerWindow } from "./HangerWindow"
+import { TargetWindow } from "./TargetWindow"
+import { Grid } from "./Grid"
+import { GameState } from "../../../game/GameState"
+import { Action } from "../../../game/Action"
+import { TeamID } from "../../../game/components/Team"
 
 export type SetUIStateCB = (new_state: GameUIState) => void;
+export type ExecuteAction = (action: Action) => void;
+
+export type GameUIStateParams = {
+    readonly setUIState: SetUIStateCB,
+    readonly executeAction: ExecuteAction,
+    readonly systems: UISystems,
+    readonly observer: UIObserver,
+    readonly friendly: TeamID,
+    readonly target_window: TargetWindow,
+    readonly hanger_window: HangerWindow,
+    readonly grid: Grid
+    state: GameState
+};
 
 export abstract class GameUIState {
-    protected readonly _setUIState: SetUIStateCB;
-    protected readonly _observer: UIObserver;
+    protected readonly _params: GameUIStateParams;
 
-    constructor(setUIState: SetUIStateCB, observer: UIObserver) {
-        this._setUIState = setUIState;
-        this._observer = observer;
+    constructor(params: GameUIStateParams) {
+        this._params = params;
     }
     /**
      * Notify the state of a change in game state
      *
      * @param state: GameState
      */
-    public abstract setState(state: GameState): void;
+    public setState(state: GameState): void {
+        this._params.state = state;
+    }
     /**
      * Enter
      */

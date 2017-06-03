@@ -14,10 +14,15 @@ import { IDPool } from "./IDPool"
 export abstract class System {
     protected readonly _id_pool: IDPool;
     protected readonly _messengers: Messengers;
+    protected _state: GameState;
 
-    constructor(id_pool: IDPool, messengers: Messengers) {
+    constructor(id_pool: IDPool, messengers: Messengers, state: GameState) {
         this._id_pool = id_pool;
         this._messengers = messengers;
+        this._state = state;
+    }
+    public setState(state: GameState): void {
+        this._state = state;
     }
     /**
      * Called when a turn ends
