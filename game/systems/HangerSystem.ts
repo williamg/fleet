@@ -48,7 +48,7 @@ export class HangerSystem extends System {
         if (comp.type == ComponentType.DEPLOYABLE) {
             const index = this._entities.indexOf(entity);
 
-            if (index > 0) {
+            if (index >= 0) {
                 this._entities = this._entities.delete(index);
             }
         }
