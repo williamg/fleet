@@ -7,7 +7,7 @@
 import { GameUIState, UIStateEvent } from "./GameUIState"
 import { ClientGameSystems } from "./GameScene"
 import { MyTurnUIState } from "./MyTurnUIState"
-import { GameView } from "./GameView"
+import { GameView, HexStyle } from "./GameView"
 
 import { GameState } from "../../../game/GameState"
 import { Entity } from "../../../game/Entity"
@@ -83,8 +83,16 @@ export class NotMyTurnUIState extends Observer<UIStateEvent> implements GameUISt
         this._view.removeListener("hanger ship click", this._onHangerSelected);
     }
     private onHangerSelected(entity: Entity): void {
+        this._view.clearHexStyles();
         this._view.showEntityInfo(entity);
     }
     private onHexSelected(hex: Vec2): void {
+        const status = this._systems.grid.occupancyStatus(hex);
+
+        if (status != "free" && status != "unknown") {
+            this._view.showEntityInfo(status);
+            this._view.clearHexStyles();
+            this._view.setHexStyle(hex, HexStyle.SELECTED);
+        }
     }
 }
