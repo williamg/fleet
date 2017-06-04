@@ -1,9 +1,18 @@
 
-import { Style, FrameSprite, Label, Resource } from "./UI"
-import { GameInputHandler } from "./GameInputHandler"
-import { Vec2 } from "../../../game/Math"
-import { LOG } from "../../../game/util"
-import { Entity } from "../../../game/Entity"
+import { Style, FrameSprite, Label, Resource } from "../../UI"
+
+import { GameInteractionEvent, CancelPos } from "../GameView"
+
+import { Component, ComponentType } from "../../../../game/Component"
+import { Entity } from "../../../../game/Entity"
+import { GameState } from "../../../../game/GameState"
+import { Observer, LOG } from "../../../../game/util"
+import { Vec2 } from "../../../../game/Math"
+
+import { Deployable } from "../../../../game/components/Deployable"
+
+import { TeamID } from "../../../../game/components/Team"
+import { Name } from "../../../../game/components/Name"
 
 import * as PIXI from "pixi.js"
 
@@ -45,8 +54,10 @@ class ItemInfo {
 
 export class TargetWindow extends PIXI.Container {
     /* Target window state */
-    private readonly input_handler: GameInputHandler;
-    private targeted: Entity | undefined;
+    private readonly _friendly: TeamID;
+    private _game_state: GameState;
+    private _observer: Observer<GameInteractionEvent>;
+    private _targeted: Entity | undefined;
     private buttons_visible: boolean;
 
     /* Containers for various sections */
@@ -71,12 +82,17 @@ export class TargetWindow extends PIXI.Container {
 
     /* Buttons */
     private move_button: FrameSprite;
+    private cancel_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
-    constructor(input_handler: GameInputHandler, target: Entity | undefined) {
+    constructor(observer: Observer<GameInteractionEvent>, friendly: TeamID,
+                state: GameState) {
         super()
-this.input_handler = input_handler;
-        this.targeted = target;
+
+        this._observer = observer;
+        this._friendly = friendly;
+        this._game_state = state;
+        this._targeted = undefined;
         this.buttons_visible = false;
 
         /* Initialize container positions. These stay constant since they're
@@ -185,11 +201,42 @@ this.input_handler = input_handler;
             this.button_tray.addChild(item_button);
         }
 
-        if (this.targeted) {
-            this.setTarget(this.targeted);
+        /* Cancel button ISN'T shown by default */
+        this.cancel_button = new FrameSprite("cancel.png");
+    }
+    public setState(state: GameState): void {
+        this._game_state = state;
+
+        if (this._targeted) {
+            this.setTarget(this._targeted);
         }
     }
+    /**
+     * Update the currently displayed target
+     * 
+     * @param entity Entity to display
+     */
+    public setTarget(entity: Entity): void {
+        if (entity != this._targeted && this._targeted)
+        {
+            /* TODO: Uninstall event listeners, reinstall if this is a friendly
+             * target
+             */
+        }
 
+        this._targeted = entity;
+
+        this.displayShipInfo(this._targeted);
+        this.displayHealth(this._targeted);
+        this.displayBattery(this._targeted);
+        this.displayMovement(this._targeted);
+        /*this.displayPilot(this._targeted);
+
+        let i = 0;
+        for (const item of this._targeted.getComponents(Item)) {
+            this.displayItem(item, i++);
+        }*/
+    }
     public setButtonTrayVisible(visible: boolean): void
     {
         this.buttons_visible = visible;
@@ -205,39 +252,38 @@ this.input_handler = input_handler;
             this.button_tray.y = BUTTON_IN.y;
 
             this.move_button.interactive = false;
+            this.cancel_button.interactive = false;
         } else {
             this.button_tray.x = BUTTON_OUT.x;
             this.button_tray.y = BUTTON_OUT.y;
 
             this.move_button.interactive = true;
             this.move_button.buttonMode = true;
+            this.cancel_button.interactive = true;
+            this.cancel_button.buttonMode = true;
+
+            this.cancel_button.on("click", () => {
+                this._observer.emit("cancel");
+            });
+        }
+
+        /* Update button displays */
+        if (this._targeted) {
+            this.displayMovement(this._targeted);
         }
     }
-    /**
-     * Update the currently displayed target
-     * 
-     * @param entity Entity to display
-     */
-    public setTarget(entity: Entity): void {
-        if (entity != this.targeted && this.targeted)
-        {
-            /* TODO: Uninstall event listeners, reinstall if this is a friendly
-             * target
-             */
+    public setCancelPos(pos: CancelPos): void {
+        if (pos == CancelPos.HIDDEN) {
+            this.button_tray.removeChild(this.cancel_button);
+            return;
         }
 
-        this.targeted = entity;
+        this.button_tray.addChild(this.cancel_button);
 
-        this.displayShipInfo(this.targeted);
-        this.displayHealth(this.targeted);
-        this.displayBattery(this.targeted);
-        this.displayMovement(this.targeted);
-        /*this.displayPilot(this.targeted);
-
-        let i = 0;
-        for (const item of this.targeted.getComponents(Item)) {
-            this.displayItem(item, i++);
-        }*/
+        if (pos == CancelPos.MOVE) {
+            this.cancel_button.x = MOVE_BUTTON.x;
+            this.cancel_button.y = MOVE_BUTTON.y;
+        }
     }
     /**
      * Display ship info
@@ -246,12 +292,13 @@ this.input_handler = input_handler;
      * @param entity Entity to display
      */
     private displayShipInfo(entity: Entity): void {
-        /*const ship_info = entity.getComponent(ShipInfo);
+        const ship_name =
+            this._game_state.getComponent<Name>(entity, ComponentType.NAME);
 
-        if (ship_info)
+        if (ship_name)
         {
-            this.target.label.text = ship_info.name;
-        }*/
+            this.target.label.text = ship_name.data.name;
+        }
     }
     /**
      * Display health of entity
@@ -287,28 +334,28 @@ this.input_handler = input_handler;
          * component AND a deployable component...we're assuming here that we
          * only have one or the other
          */
-        //const deployable = entity.getComponent(Deployable);
-        const deployable = undefined;
+        const deployable = this._game_state.getComponent<Deployable>(
+            entity, ComponentType.DEPLOYABLE);
 
         if (deployable)
         {
-            /*this.move_cost.label.text =
-                deployable.deploy_cost.value().toString();
-            this.move_cost.alpha = 1.0;*/
+            this.move_cost.label.text =
+                deployable.data.deploy_cost.toString();
+            this.move_cost.alpha = 1.0;
 
             /* Deploying depends on the charge of the entity supplying the
              * deploy zone. So we show the movement button as active always on
              * deployables even though there might not be anywhere valid for
              * the target to deploy to
              */
-            /*this.move_button.texture =
+            this.move_button.texture =
                 PIXI.Texture.fromFrame("active_move.png");
 
             if (this.buttons_visible) {
                 this.move_button.on("click", () => {
-                    this.input_handler.moveButtonClick(entity)
+                    this._observer.emit("deploy", entity);
                 });
-            }*/
+            }
         }
         else
         {

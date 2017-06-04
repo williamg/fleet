@@ -5,6 +5,7 @@ import { Change, ChangeType, StartGame, CreateEntity, DestroyEntity,
     UpdateComponent, DetachComponent, AttachComponent, EndTurn
     } from "./Changes"
 import { Component, ComponentType, ComponentID } from "./Component"
+import { GameSystems } from "./GameSystems"
 import { Entity } from "./Entity"
 import { System } from "./System"
 import { ASSERT, LOG } from "./util"
@@ -46,7 +47,7 @@ export class GameState extends GameStateRecord {
      * Maps entities to their components.
      *
      * The map is to ComponentIDs rather than Components to make serialization
-     * easy in the case that one component needs to reference another
+     * easy in the case that one component needs to reference another.
      * IDs are constant throughout serialization whereas references are not.
      *
      * @type {Map<Entity, Set<ComponentID>>}
@@ -103,7 +104,7 @@ export class GameState extends GameStateRecord {
         const comp_ids = this.entities.get(entity)!;
 
         return Set<Component>(comp_ids.map((id) => {
-            return (this.components.get(id!))!;
+            return (this.components.get(id))!;
         }));
     }
     /**
@@ -116,10 +117,10 @@ export class GameState extends GameStateRecord {
     public getComponent<CompType>(entity: Entity, type: ComponentType):
         CompType | undefined {
         const comps = this.getComponents(entity);
-
-        const res = comps.find((comp) => { return comp!.type == type; });
+        const res = comps.find((comp) => { return comp.type == type; });
 
         if (res) {
+            ASSERT(res.type == type);
             return <CompType><any>res;
         }
 
@@ -135,12 +136,12 @@ export class GameState extends GameStateRecord {
 export class GameStateChanger {
     private _state: GameState;
     private _changeset: List<Change>;
-    private readonly _systems: System[];
+    private readonly _systems_arr: System[];
 
     constructor(state: GameState, systems: System[]) {
         this._state = state;
         this._changeset = List<Change>();
-        this._systems = systems;
+        this._systems_arr = systems;
     }
 
     /* Define getter, but no setter */
@@ -162,7 +163,7 @@ export class GameStateChanger {
             case ChangeType.CREATE_ENT: {
                 const entity = (change as CreateEntity).entity;
 
-                for (const system of this._systems) {
+                for (const system of this._systems_arr) {
                     system.entityCreated(entity, this._state);
                 }
                 return;
@@ -170,7 +171,7 @@ export class GameStateChanger {
             case ChangeType.DESTROY_ENT: {
                 const entity = (change as DestroyEntity).entity;
 
-                for (const system of this._systems) {
+                for (const system of this._systems_arr) {
                     system.entityDestroyed(entity, this._state);
                 }
                 return;
@@ -179,7 +180,7 @@ export class GameStateChanger {
                 const entity = (change as DetachComponent).entity;
                 const comp = (change as DetachComponent).component;
 
-                for (const system of this._systems) {
+                for (const system of this._systems_arr) {
                     system.componentDetached(entity, comp, this._state);
                 }
                 return;
@@ -188,15 +189,12 @@ export class GameStateChanger {
                 const entity = (change as AttachComponent).entity;
                 const comp = (change as AttachComponent).component;
 
-                for (const system of this._systems) {
+                for (const system of this._systems_arr) {
                     system.componentAttached(entity, comp, this._state);
                 }
                 return;
             }
             case ChangeType.END_TURN: {
-                for (const system of this._systems) {
-                    system.processTurnEnd(this);
-                }
                 return;
             }
             default:

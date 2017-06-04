@@ -8,21 +8,28 @@
 import { Component, ComponentID, ComponentType } from "./Component"
 import { Entity } from "./Entity"
 import { GameState, GameStateChanger } from "./GameState"
+import { GameSystems } from "./GameSystems"
 import { Messengers } from "./Messenger"
 import { IDPool } from "./IDPool"
 
 export abstract class System {
     protected readonly _id_pool: IDPool;
     protected readonly _messengers: Messengers;
+    protected _state: GameState;
 
-    constructor(id_pool: IDPool, messengers: Messengers) {
+    constructor(id_pool: IDPool, messengers: Messengers, state: GameState) {
         this._id_pool = id_pool;
         this._messengers = messengers;
+        this._state = state;
+    }
+    public setState(state: GameState): void {
+        this._state = state;
     }
     /**
      * Called when a turn ends
      */
-    public processTurnEnd(state: GameStateChanger | undefined): void {}
+    public processTurnEnd(state: GameStateChanger, systems: GameSystems): void {
+    }
     /**
      * Called whenever an entity gets created
      *

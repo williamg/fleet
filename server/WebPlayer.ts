@@ -11,11 +11,16 @@ import { serializeMatchInfo } from "../game/serialization/MatchSerialization"
 import { deserializeAction } from "../game/serialization/ActionSerialization"
 import { serializeChangeset } from "../game/serialization/ChangeSerialization"
 import { MatchInfo } from "../game/MatchInfo"
-import { Change } from "../game/Changes"
 import { Action } from "../game/Action"
-import { TeamID } from "../game/components/Team"
 import { GameStateChanger } from "../game/GameState"
 import { LOG } from "../game/util"
+import { IDPool } from "../game/IDPool"
+
+import { Change, CreateEntity, AttachComponent } from "../game/Changes"
+
+import { Deployable, newDeployable } from "../game/components/Deployable"
+import { Name, newName } from "../game/components/Name"
+import { Team, TeamID, newTeam } from "../game/components/Team"
 
 import { List } from "immutable"
 
@@ -31,8 +36,28 @@ export class WebPlayer extends Player {
      * TODO: Lookup this client's fleet and init the entities
      *
      * @param {GameStateChanger} state State to modify
+     * @param {IDPool}           pool  IDPool
      */
-    public initEntities(state: GameStateChanger): void {
+    public initEntities(state: GameStateChanger, pool: IDPool): void {
+        /* Create some hanger entities */
+        for (let i = 0; i < 13; ++i) {
+            const ent = pool.entity();
+            state.makeChange(new CreateEntity(ent));
+
+            const name = newName(pool.component(), {
+                name: "Friendly " + i.toString()
+            });
+            const deployable = newDeployable(pool.component(), {
+                deploy_cost: 10*i
+            });
+            const team = newTeam(pool.component(), {
+                team: this.team
+            });
+
+            state.makeChange(new AttachComponent(ent, name));
+            state.makeChange(new AttachComponent(ent, deployable));
+            state.makeChange(new AttachComponent(ent, team));
+        }
     }
     /**
      * Notify the client that a match has been found

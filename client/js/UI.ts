@@ -3,8 +3,8 @@
  * Common UI constants and classes
  */
 
-import { Vec2 } from "../../../game/Math"
-import { LOG } from "../../../game/util"
+import { Vec2 } from "../../game/Math"
+import { LOG } from "../../game/util"
 
 import * as PIXI from "pixi.js"
 
@@ -17,12 +17,12 @@ export class FrameSprite extends PIXI.Sprite {
 export const Style = {
     text: {
         normal: new PIXI.TextStyle({
-            fontFamily: "Droid Sans",
+            fontFamily: "Arial",
             fontSize: 14,
             fill: "#FFFFFF",
         }),
         header: new PIXI.TextStyle({
-            fontFamily: "Droid Sans",
+            fontFamily: "Arial",
             fontSize: 14,
             fontWeight: "bold",
             fill: "#FFFFFF",

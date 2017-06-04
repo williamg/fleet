@@ -84,37 +84,20 @@ export class Messenger<T> {
 import { Entity } from "./Entity"
 import { Vec2 } from "./Math"
 
-export type BeforeMove = {
-    entity: Entity,
-    to: Vec2
-};
-
-export type AfterMove = {
+export type OnMove = {
     entity: Entity
     from: Vec2
 };
 
-export type BeforeDeploy = {
-    deploying: Entity,
-    dest: Entity,
-    index: number
-};
-
-export type AfterDeploy = {
-    deploying: Entity,
+export type OnDeploy = {
+    deployed: Entity,
     dest: Entity,
     index: number
 };
 
 export class Messengers {
-    public readonly beforeMove: Messenger<BeforeMove> =
-        new Messenger<BeforeMove>();
-    public readonly afterMove: Messenger<AfterMove> =
-        new Messenger<AfterMove>();
-    public readonly beforeDeploy: Messenger<BeforeDeploy> =
-        new Messenger<BeforeDeploy>();
-    public readonly afterDeploy: Messenger<AfterDeploy> =
-        new Messenger<AfterDeploy>();
+    public readonly onMove: Messenger<OnMove> = new Messenger<OnMove>();
+    public readonly onDeploy: Messenger<OnDeploy> = new Messenger<OnDeploy>();
 
     constructor() {
     }

@@ -3,12 +3,17 @@
  * Simple AI player. Does nothing but end their turn right now.
  * TODO: Make this slightly less stupid;
  */
-import { TeamID } from "../game/components/Team"
 import { Player } from "./Player"
 import { GameStateChanger, GameState } from "../game/GameState"
-import { Change } from "../game/Changes"
 import { MatchInfo } from "../game/MatchInfo"
 import { END_TURN_EVENT, READY_EVENT } from "./Game"
+import { IDPool } from "../game/IDPool"
+
+import { Change, CreateEntity, AttachComponent } from "../game/Changes"
+
+import { Deployable, newDeployable } from "../game/components/Deployable"
+import { Name, newName } from "../game/components/Name"
+import { Team, TeamID, newTeam } from "../game/components/Team"
 
 import { List } from "immutable"
 
@@ -23,8 +28,26 @@ export class AIPlayer extends Player {
     public matchFound(info: MatchInfo): void {
     }
 
-    public initEntities(state: GameStateChanger): void {
-        return;
+    public initEntities(state: GameStateChanger, pool: IDPool): void {
+        /* Create some hanger entities */
+        for (let i = 0; i < 3; ++i) {
+            const ent = pool.entity();
+            state.makeChange(new CreateEntity(ent));
+
+            const name = newName(pool.component(), {
+                name: "Unfriendly " + i.toString()
+            });
+            const deployable = newDeployable(pool.component(), {
+                deploy_cost: 10*i
+            });
+            const team = newTeam(pool.component(), {
+                team: this.team
+            });
+
+            state.makeChange(new AttachComponent(ent, name));
+            state.makeChange(new AttachComponent(ent, deployable));
+            state.makeChange(new AttachComponent(ent, team));
+        }
     }
 
     public handleChanges(changeset: List<Change>): void {
@@ -47,6 +70,6 @@ export class AIPlayer extends Player {
         if (this._state.current_team != this.team) return;
         if (!this._state.started) return;
 
-        this.emit(END_TURN_EVENT);
+        setTimeout(() => { this.emit(END_TURN_EVENT); }, 2000);
     }
 }

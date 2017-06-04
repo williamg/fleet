@@ -6,17 +6,21 @@ import { Action, ActionType } from "../game/Action"
 import { Entity } from "../game/Entity"
 import { IDPool } from "../game/IDPool"
 import { GameState, GameStateChanger } from "../game/GameState"
+import { GameSystems } from "../game/GameSystems"
 import { Change, StartGame, EndTurn, CreateEntity, AttachComponent } from "../game/Changes"
 import { Vec2 } from "../game/Math"
 import { Player } from "./Player"
-import { Team, TeamID } from "../game/components/Team"
 import { LOG } from "../game/util"
 import { Messengers } from "../game/Messenger"
 
 import { System } from "../game/System"
 import { GridSystem } from "../game/systems/GridSystem"
+import { DeploySystem } from "../game/systems/DeploySystem"
 
+import { newTeam, Team, TeamID } from "../game/components/Team"
 import { newHexPosition } from "../game/components/HexPosition"
+import { newDeployZone } from "../game/components/DeployZone"
+import { newName } from "../game/components/Name"
 
 export const END_TURN_EVENT = "endturn";
 export const ACTION_EVENT = "action";
@@ -44,9 +48,14 @@ export class Game {
      * required to handle user actions and update the state accordingly.
      * In particular, it doesn't include systems for Rendering or AI.
      *
-     * @type {System}[]
+     * @type {System[]}
      */
-    private readonly _systems: System[]
+    private readonly _systems_arr: System[];
+    /**
+     * Dictionary of the same systems as those above
+     * @type {GameSystems}
+     */
+    private readonly _systems: GameSystems;
     /**
      * Players in the game
      * @type {[Player, Player]}
@@ -73,8 +82,12 @@ export class Game {
      * @param {[Player, Player]} players Players in the game
      */
     constructor(_players: [Player, Player]) {
-        this._systems = [
-            new GridSystem(this._id_pool, this._messengers)
+        this._systems = {
+            deploy: new DeploySystem(this._id_pool, this._messengers, this._state),
+            grid: new GridSystem(this._id_pool, this._messengers, this._state),
+        };
+        this._systems_arr = [
+            this._systems.deploy, this._systems.grid
         ];
         this._players = _players;
         this._readys = [false, false];
@@ -95,13 +108,23 @@ export class Game {
         }
 
         /* Initialize entities */
-        const changer = new GameStateChanger(this._state, this._systems);
+        const changer = new GameStateChanger(this._state, this._systems_arr);
         this.initEntities(changer);
-        p1.initEntities(changer);
-        p2.initEntities(changer);
+        p1.initEntities(changer, this._id_pool);
+        p2.initEntities(changer, this._id_pool);
 
-        p1.handleChanges(changer.changeset);
-        p2.handleChanges(changer.changeset);
+        this._state = changer.state;
+
+        for (const system of this._systems_arr) {
+            system.setState(this._state);
+        }
+
+        /* FIXME: Delay added to give GUI a chance to catch up */
+        setTimeout(() => {
+            p1.handleChanges(changer.changeset);
+            p2.handleChanges(changer.changeset);
+        }, 500);
+
     }
     /**
      * Initialize any entities needed for the game to get underway
@@ -109,18 +132,44 @@ export class Game {
      * @param {GameStateChanger} state Game state
      */
     private initEntities(state: GameStateChanger): void {
-        /* Initialize two entities for testing purposes */
-        const e1 = this._id_pool.entity();
-        const e2 = this._id_pool.entity();
+        const locs = [
+            { x: -3, y: 0},
+            { x: 3, y: 0},
+            { x: 0, y: 2},
+            { x: 0, y: -2}
+        ];
 
-        state.makeChange(new CreateEntity(e1));
-        state.makeChange(new CreateEntity(e2));
+        const dzdata = {
+            targets: [
+                { x: -1, y: 0},
+                { x: 1, y: 0},
+                { x: -1, y: 1},
+                { x: 1, y: -1},
+                { x: 0, y: 1},
+                { x: 0, y: -1},
+            ]
+        }
 
-        const p1 = newHexPosition(this._id_pool.component(), { x: 0, y: 1 });
-        const p2 = newHexPosition(this._id_pool.component(), { x: 1, y: 0 });
+        for (let i = 0; i < locs.length; ++i) {
 
-        state.makeChange(new AttachComponent(e1, p1));
-        state.makeChange(new AttachComponent(e2, p2));
+            const dp = this._id_pool.entity();
+
+            const pos = newHexPosition(this._id_pool.component(), locs[i]);
+            const zone = newDeployZone(this._id_pool.component(), dzdata);
+            const name = newName(this._id_pool.component(), {
+                name: `Deploy Zone ${i}`
+            });
+            const team = newTeam(this._id_pool.component(), {
+                team: (i % 2) ? TeamID.TEAM_1 : TeamID.TEAM_2
+            });
+
+            state.makeChange(new CreateEntity(dp));
+            state.makeChange(new AttachComponent(dp, pos));
+            state.makeChange(new AttachComponent(dp, zone));
+            state.makeChange(new AttachComponent(dp, name));
+            state.makeChange(new AttachComponent(dp, team));
+        }
+
     }
     /**
      * Handle a ready from the given player
@@ -148,15 +197,18 @@ export class Game {
      * Start the game
      */
     private startGame(): void {
-        const player = this.getCurrentPlayer();
-
-        const mutable_state = new GameStateChanger(this._state, this._systems);
+        const mutable_state =
+            new GameStateChanger(this._state, this._systems_arr);
         mutable_state.makeChange(new StartGame());
         this._state = mutable_state.state;
 
         this._turn_timeout = <any>setTimeout(() => {
-            this.endTurn(player.team);
+            this.endTurn(this._state.current_team);
         }, TURN_TIMEOUT);
+
+        for (const system of this._systems_arr) {
+            system.setState(this._state);
+        }
 
         const [p1, p2] = this._players;
         p1.handleChanges(mutable_state.changeset);
@@ -169,13 +221,16 @@ export class Game {
      * @param {Action} action Action to perform
      */
     public handleAction(team: TeamID, action: Action) {
-        const player = this.getCurrentPlayer();
+        if (team != this._state.current_team) return;
 
-        if (player.team != team) return;
+        const mutable_state =
+            new GameStateChanger(this._state, this._systems_arr);
 
-        const mutable_state = new GameStateChanger(this._state, this._systems);
+        action.execute(mutable_state, this._systems);
 
-        action.execute(mutable_state, this._messengers);
+        for (const system of this._systems_arr) {
+            system.setState(this._state);
+        }
 
         const [p1, p2] = this._players;
         p1.handleChanges(mutable_state.changeset);
@@ -187,35 +242,32 @@ export class Game {
      * @param {TeamID} team Team trying to end turn
      */
     public endTurn(team: TeamID): void {
-        const player = this.getCurrentPlayer();
-
-        if (player.team != team) return;
+        if (team != this._state.current_team) return;
 
         if (this._turn_timeout != null) {
             clearTimeout(this._turn_timeout);
         }
 
-        const mutable_state = new GameStateChanger(this._state, this._systems);
+        const mutable_state =
+            new GameStateChanger(this._state, this._systems_arr);
+
+        for (const system of this._systems_arr) {
+            system.processTurnEnd(mutable_state, this._systems);
+        }
+
         mutable_state.makeChange(new EndTurn());
         this._state = mutable_state.state;
 
+        for (const system of this._systems_arr) {
+            system.setState(this._state);
+        }
+
         this._turn_timeout = <any>setTimeout(() => {
-            this.endTurn(player.team);
+            this.endTurn(this._state.current_team);
         }, TURN_TIMEOUT);
 
         const [p1, p2] = this._players;
         p1.handleChanges(mutable_state.changeset);
         p2.handleChanges(mutable_state.changeset);
-    }
-    /**
-     * Get the current player
-     *
-     * @return {Player} Current player
-     */
-    private getCurrentPlayer(): Player {
-        const [p1, p2] = this._players;
-
-        if (this._state.current_team == p1.team) return p1;
-        return p2;
     }
 }

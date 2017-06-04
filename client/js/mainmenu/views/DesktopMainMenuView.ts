@@ -3,8 +3,12 @@
  * Describes the main menu scene a user sees once they're logged in
  */
 
-import { Scene } from "../Scene"
-import { Style } from "./UI"
+import { MainMenuView, MainMenuInteractionEvent } from "../MainMenuView"
+
+import { Scene } from "../../Scene"
+import { Style, FrameSprite } from "../../UI"
+
+import { Observer, LOG } from "../../../../game/util"
 
 import * as PIXI from "pixi.js"
 
@@ -22,16 +26,12 @@ const STATUS_STYLE = new PIXI.TextStyle({
 
 function createButton(y: number, color: string, label: string,
                       click_handler: () => void): PIXI.Container {
-    let button_container = new PIXI.Container();
-    button_container.x = 12;
-    button_container.y = y;
-
-    const texture = PIXI.Texture.fromFrame(color + '_menu_button.png');
-
-    let image = new PIXI.Sprite(texture);
-    image.interactive = true;
-    image.buttonMode = true;
-    image.on('click', click_handler);
+    let button = new FrameSprite(color + '_menu_button.png');
+    button.x = 12;
+    button.y = y;
+    button.interactive = true;
+    button.buttonMode = true;
+    button.on('click', click_handler);
 
     let label_item = new PIXI.Text(label, Style.text.button);
     label_item.anchor.x = 0.5;
@@ -39,73 +39,66 @@ function createButton(y: number, color: string, label: string,
     label_item.x = 128;
     label_item.y = 23;
 
-    button_container.addChild(image);
-    button_container.addChild(label_item);
+    button.addChild(label_item);
 
-    return button_container;
+    return button;
 }
 
-export class MainMenu extends Scene {
-    private menu: PIXI.Sprite;
-    private text_container: PIXI.Container;
+export class DesktopMainMenuView extends Observer<MainMenuInteractionEvent> implements MainMenuView {
+    private readonly _menu: FrameSprite;
+    private readonly _text_container: PIXI.Container;
 
     /* Array of timestamped messages to display in the text section of the
      * MainMenu UI
      */
-    private text: [Date, string][] = [];
+    private _text: [Date, string][] = [];
 
     constructor() {
         super();
+
+        /* Setup layout */
+        this._menu = new FrameSprite("main_menu_frame.png");
+        this._menu.x = 20;
+        this._menu.y = 540;
+
+        this._menu.addChild(createButton(12, "blue", "PLAY", () => {
+            this.emit("play");
+        }));
+        this._menu.addChild(createButton(72, "green", "MY FLEET", () => {
+            console.log("FLEET");
+        }));
+        this._menu.addChild(createButton(132, "grey", "STATS", () => {
+            console.log("STATS");
+        }));
+        this._menu.addChild(createButton(192, "grey", "SETTINGS", () => {
+            console.log("SETTINGS");
+        }));
+
+        this._text_container = new PIXI.Container();
+        this._text_container.x = TEXT_X;
+        this._text_container.y = TEXT_Y;
+
+        this._menu.addChild(this._text_container);
     }
-
     public enter(stage: PIXI.Container, callback: () => void): void {
-        /* Setup menu */
-        this.menu =
-            new PIXI.Sprite(PIXI.Texture.fromFrame('main_menu_frame.png'));
-        this.menu.x = 20;
-        this.menu.y = 540;
-
-        this.menu.addChild(
-            createButton(12, "blue", "PLAY", () => {console.log("PLAY");}));
-        this.menu.addChild(
-            createButton(72, "green", "MY FLEET", () => {console.log("FLEET");}));
-        this.menu.addChild(
-            createButton(132, "grey", "STATS", () => {console.log("STATS");}));
-        this.menu.addChild(
-            createButton(192, "grey", "SETTINGS", () => {console.log("SETTINGS");}));
-
-        this.text_container = new PIXI.Container();
-        this.text_container.x = TEXT_X;
-        this.text_container.y = TEXT_Y;
-
-        this.menu.addChild(this.text_container);
-
-        stage.addChild(this.menu);
+        stage.addChild(this._menu);
 
         callback();
     }
-
-    private clearTextContainer(): void {
-        this.menu.removeChild(this.text_container);
-
-        this.text_container = new PIXI.Container();
-        this.text_container.x = TEXT_X;
-        this.text_container.y = TEXT_Y;
-
-        this.menu.addChild(this.text_container);
+    public exit(callback: () => void): void {
+        return callback();
     }
-
-    public render() {
+    public render(delta: number) {
     }
     /**
      * Add a message to the text box
      *
      * @param {string} msg String to append
      */
-    public appendMessage(msg: string): void {
-        this.clearTextContainer();
+    public displayNotification(msg: string): void {
+        this._text_container.removeChildren();
 
-        this.text.unshift([new Date(), msg]);
+        this._text.unshift([new Date(), msg]);
 
         /* While we haven't exceeded the height of the text box, add messages
          * and their timestamps. Newest at the top
@@ -114,7 +107,7 @@ export class MainMenu extends Scene {
         let i = 0;
 
         while (true) {
-            const [date, str] = this.text[i];
+            const [date, str] = this._text[i];
 
             /* TODO: Pad hours and minutes with 0s on the left */
             const formatted = "[" + date.getHours().toString() + ":" +
@@ -131,21 +124,21 @@ export class MainMenu extends Scene {
             text.x = 0;
             text.y = current_height;
 
-            this.text_container.addChild(text);
+            this._text_container.addChild(text);
 
             current_height += metrics.height;
 
             /* Stop if this was the last message */
             i++;
 
-            if (i >= this.text.length) {
+            if (i >= this._text.length) {
                 break;
             }
         }
 
         /* Remove any messages that aren't being displayed anymore */
-        while (i < this.text.length) {
-            this.text.pop();
+        while (i < this._text.length) {
+            this._text.pop();
             i++;
         }
     }

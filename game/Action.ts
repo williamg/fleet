@@ -3,18 +3,23 @@
  */
 import { Entity } from "./Entity"
 import { GameStateChanger } from "./GameState"
+import { GameSystems } from "./GameSystems"
+import { IDPool } from "./IDPool"
 import { Messengers } from "./Messenger"
-import { UpdateComponent } from "./Changes"
+import { UpdateComponent, AttachComponent, DetachComponent } from "./Changes"
 import { Vec2 }  from "./Math"
 
 import { ComponentType } from "./Component"
-import { HexPosition } from "./components/HexPosition"
+import { HexPosition, newHexPosition } from "./components/HexPosition"
+import { DeployZone } from "./components/DeployZone"
+import { Deployable } from "./components/Deployable"
 
 /**
  * Type of action
  */
 export enum ActionType {
     MOVE,
+    DEPLOY,
 };
 /*
  * Actions are the primary interface betwene player and game. Each player's turn
@@ -33,10 +38,10 @@ export abstract class Action {
     /**
      * Execute an action
      * @param {GameStateChanger} changer    Current state changer
-     * @param {Messengers}       messengers Messengers object
+     * @param {GameSystems}      systems    Game systems
      */
-    public abstract execute(state: GameStateChanger, messengers: Messengers):
-        void;
+    public abstract execute(state: GameStateChanger,
+                            systems: GameSystems): void;
 };
 /**
  * Move an entity from one cell to another
@@ -60,33 +65,40 @@ export class Move extends Action {
         this.dest = dest;
     }
 
-    public execute(changer: GameStateChanger, messengers: Messengers): void {
-        let pos = changer.state.getComponent<HexPosition>(
-            this.entity, ComponentType.HEX_POSITION);
+    public execute(changer: GameStateChanger, systems: GameSystems): void {
+    }
+}
+/**
+ * Deploy a ship from the hanger to the grid
+ */
+export class Deploy extends Action {
+    /**
+     * Entity being deployed
+     * @type {Entity}
+     */
+    public readonly entity: Entity;
+    /**
+     * Entity providing the deploy zone
+     * @type {Entity}
+     */
+    public readonly deploy_entity: Entity;
+    /**
+     * Index into that entity's target array providing the final location
+     * @type {number}
+     */
+    public readonly target_index: number;
 
-        if (pos == undefined) return;
+    constructor(entity: Entity, deploy_entity: Entity, target_index: number) {
+        super(ActionType.DEPLOY);
 
-        const old_pos = new Vec2(pos!.data.x, pos!.data.y);
+        this.entity = entity;
+        this.deploy_entity = deploy_entity;
+        this.target_index = target_index;
+    }
 
-        /* Announce that we're about to move the entity */
-        const res = messengers.beforeMove.publish({
-            entity: this.entity,
-            to: this.dest
-        }, changer);
-
-        /* If everyone's okay with us moving the entity, move it, and then tell
-         * everyone we moved it
-         */
-        if (res) {
-            pos = pos.with({ x: this.dest.x, y: this.dest.y });
-
-            changer.makeChange(new UpdateComponent(pos));
-
-            messengers.afterMove.publish({
-                entity: this.entity,
-                from: old_pos
-            }, changer);
-        }
+    public execute(changer: GameStateChanger, systems: GameSystems): void {
+        systems.deploy.deploy(changer, systems, this.entity, this.deploy_entity,
+                              this.target_index);
     }
 }
 

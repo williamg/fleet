@@ -36,3 +36,33 @@ export function ASSERT(val: boolean) {
         console.assert(val);
     }
 }
+
+/**
+ * Typed observer
+ */
+import { EventEmitter } from "events"
+
+export class Observer<EventType extends string> extends EventEmitter {
+    constructor(max: number = 10) {
+        super();
+        this.setMaxListeners(max);
+    }
+    public emit(event: EventType, data?: any): boolean {
+        return super.emit(event, data);
+    }
+    public on(event: EventType, fn: (data: any) => void): this {
+        return super.on(event, fn);
+    }
+    public once(event: EventType, fn: (data: any) => void): this {
+        return super.once(event, fn);
+    }
+    public removeListener(event: EventType, fn: (data: any) => void): this {
+        return super.removeListener(event, fn);
+    }
+    public removeAllListeners(event: EventType): this {
+        return super.removeAllListeners(event);
+    }
+    public addListener(event: EventType, fn: (data: any) => void): this {
+        return super.addListener(event, fn);
+    }
+}

@@ -9,7 +9,11 @@ import { Map } from "immutable"
  * All possible component types. Used for serialization
  */
 export enum ComponentType {
-    HEX_POSITION
+    HEX_POSITION,
+    TEAM,
+    NAME,
+    DEPLOYABLE,
+    DEPLOY_ZONE
 };
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of

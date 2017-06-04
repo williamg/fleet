@@ -4,52 +4,37 @@
  */
 
 import { UserInterface } from "./UserInterface"
-import { MainMenu } from "./desktop/MainMenu"
-import { GameScreen } from "./desktop/GameScreen"
-import { GameInputHandler } from "./desktop/GameInputHandler"
-import { GameState } from "../../game/GameState"
 import { Message, MessageType } from "../../game/Message"
-import { deserializeMatchInfo } from "../../game/serialization/MatchSerialization"
 import { serializeMessage, deserializeMessage }
     from "../../game/serialization/MessageSerialization"
 import { deserializeChangeset } from "../../game/serialization/ChangeSerialization"
+import { LOG } from "../../game/util"
 
-const ws = new WebSocket('ws://localhost:8080');
-ws.addEventListener('message', handleMessage);
+import * as PIXI from "pixi.js"
 
-const main_menu = new MainMenu();
-const ui = new UserInterface(main_menu, () => {});
-let did_ready = false;
-let game_screen: GameScreen | undefined = undefined;
+/**
+ * Websocket connection to server
+ */
+/*
+ * Load assets so that we can show something to the user ASAP
+ */
+PIXI.loader.add('assets/ui/ui.json').load(() => {
+    LOG.INFO("Finished loading assets");
 
-function handleMessage(event: MessageEvent) {
-    const msg = deserializeMessage(event.data);
+    /* Connect to server */
+    const ws = new WebSocket('ws://localhost:8080');
 
-    if (msg.type == MessageType.SERVER_STATUS) {
-        main_menu.appendMessage(msg.data);
+    /* Initialize the user interface */
+    const ui = new UserInterface((msg: Message) => {
+        ws.send(serializeMessage(msg));
+    }, () => {});
 
-        /* Assume connected, find match */
-        const find_match = new Message(MessageType.PLAY_AI_MATCH, "");
-        ws.send(serializeMessage(find_match));
-    } else if (msg.type == MessageType.MATCH_FOUND) {
-        /* Found match transition to game view */
-        main_menu.appendMessage("Match found!");
+    /* Install message handlers */
+    ws.addEventListener('message', (event: MessageEvent) => {
+        const message = deserializeMessage(event.data);
 
-        const match_info = deserializeMatchInfo(msg.data);
-        const input_handler = new GameInputHandler();
-        game_screen = new GameScreen(input_handler, match_info.friendly,
-                                     new GameState());
-    } else if (msg.type == MessageType.CHANGESET) {
-        if (!did_ready) {
-            console.log("Received first changeset");
-            game_screen!.handleChanges(deserializeChangeset(msg.data));
-            ui.setScene(game_screen!, () => {
-                did_ready = true;
-                const ready = new Message(MessageType.READY, "");
-                ws.send(serializeMessage(ready));
-            });
-        } else {
-            game_screen!.handleChanges(deserializeChangeset(msg.data));
-        }
-    }
-}
+        ui.handleMessage(message);
+    });
+
+    /* TODO: open, close, error handlers */
+});

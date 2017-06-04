@@ -8,7 +8,7 @@ import { Entity } from "../Entity"
 import { IDPool } from "../IDPool"
 import { GameState, GameStateChanger } from "../GameState"
 import { System } from "../System"
-import { Messengers, SubscriberID, AfterMove, AfterDeploy } from "../Messenger"
+import { Messengers, SubscriberID, OnMove } from "../Messenger"
 import { Vec2 } from "../Math"
 import { HexPosition } from "../components/HexPosition"
 import { ASSERT, LOG } from "../util"
@@ -53,18 +53,19 @@ export class GridSystem extends System {
      * Subscriber ID for handling movement events
      * @type {SubscriberID}
      */
-    private _after_move_sub: SubscriberID;
+    private _on_move_sub: SubscriberID;
 
     /**
      * Initialize the grid with the provided cells
      *
      * @param {IDPool}             id_pool    ID Pool
      * @param {Messengers}         messengers Messengers
+     * @param {GameState}          state      GameState
      * @param {[number, number][]} tiles      Map/tile coordinates
      */
     constructor(id_pool: IDPool, messengers: Messengers,
-                tiles: [number, number][] = MAP) {
-        super(id_pool, messengers);
+                state: GameState, tiles: [number, number][] = MAP) {
+        super(id_pool, messengers, state);
 
         /* Initialize empty grid */
         this._index_map = List<Vec2>(tiles.map(([x, y]) => {
@@ -76,8 +77,8 @@ export class GridSystem extends System {
         }
 
         /* Subscribe to movement event */
-        this._after_move_sub =
-            this._messengers.afterMove.subscribe((evt, changer) => {
+        this._on_move_sub =
+            this._messengers.onMove.subscribe((evt, changer) => {
                 this._updateGrid(changer.state, evt.entity);
                 return true;
             }, 0);
@@ -90,6 +91,15 @@ export class GridSystem extends System {
     }
     get index_map(): List<Vec2> {
         return this._index_map;
+    }
+    public occupancyStatus(pos: Vec2): OccupancyStatus {
+        const index = this._index_map.findIndex((loc) => {
+            return pos.equals(loc);
+        });
+
+        if (index < 0) return "unknown";
+
+        return this._grid.get(index)!;
     }
     public inBounds(pos: Vec2): boolean {
         return this._index_map.findIndex((loc) => {
