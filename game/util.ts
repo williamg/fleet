@@ -43,7 +43,7 @@ export function ASSERT(val: boolean) {
 import { EventEmitter } from "events"
 
 export class Observer<EventType extends string> extends EventEmitter {
-    constructor(max: number) {
+    constructor(max: number = 10) {
         super();
         this.setMaxListeners(max);
     }

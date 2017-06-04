@@ -8,7 +8,7 @@ import { Entity } from "../Entity"
 import { IDPool } from "../IDPool"
 import { GameState, GameStateChanger } from "../GameState"
 import { System } from "../System"
-import { Messengers, SubscriberID, AfterMove, AfterDeploy } from "../Messenger"
+import { Messengers, SubscriberID, OnMove } from "../Messenger"
 import { Vec2 } from "../Math"
 import { HexPosition } from "../components/HexPosition"
 import { ASSERT, LOG } from "../util"
@@ -53,7 +53,7 @@ export class GridSystem extends System {
      * Subscriber ID for handling movement events
      * @type {SubscriberID}
      */
-    private _after_move_sub: SubscriberID;
+    private _on_move_sub: SubscriberID;
 
     /**
      * Initialize the grid with the provided cells
@@ -63,8 +63,8 @@ export class GridSystem extends System {
      * @param {GameState}          state      GameState
      * @param {[number, number][]} tiles      Map/tile coordinates
      */
-    constructor(id_pool: IDPool, messengers: Messengers, state: GameState,
-                tiles: [number, number][] = MAP) {
+    constructor(id_pool: IDPool, messengers: Messengers,
+                state: GameState, tiles: [number, number][] = MAP) {
         super(id_pool, messengers, state);
 
         /* Initialize empty grid */
@@ -77,8 +77,8 @@ export class GridSystem extends System {
         }
 
         /* Subscribe to movement event */
-        this._after_move_sub =
-            this._messengers.afterMove.subscribe((evt, changer) => {
+        this._on_move_sub =
+            this._messengers.onMove.subscribe((evt, changer) => {
                 this._updateGrid(changer.state, evt.entity);
                 return true;
             }, 0);

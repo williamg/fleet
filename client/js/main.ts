@@ -4,7 +4,6 @@
  */
 
 import { UserInterface } from "./UserInterface"
-import { MainMenu } from "./desktop/MainMenu"
 import { Message, MessageType } from "../../game/Message"
 import { serializeMessage, deserializeMessage }
     from "../../game/serialization/MessageSerialization"

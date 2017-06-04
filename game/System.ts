@@ -8,6 +8,7 @@
 import { Component, ComponentID, ComponentType } from "./Component"
 import { Entity } from "./Entity"
 import { GameState, GameStateChanger } from "./GameState"
+import { GameSystems } from "./GameSystems"
 import { Messengers } from "./Messenger"
 import { IDPool } from "./IDPool"
 
@@ -27,7 +28,8 @@ export abstract class System {
     /**
      * Called when a turn ends
      */
-    public processTurnEnd(state: GameStateChanger | undefined): void {}
+    public processTurnEnd(state: GameStateChanger, systems: GameSystems): void {
+    }
     /**
      * Called whenever an entity gets created
      *

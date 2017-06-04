@@ -5,7 +5,7 @@
 
 
 import { Scene } from "./Scene"
-import { MainMenu } from "./desktop/MainMenu"
+import { MainMenuScene } from "./mainmenu/MainMenuScene"
 import { Action } from "../../game/Action"
 import { Message } from "../../game/Message"
 import { Vec2 } from "../../game/Math"
@@ -58,7 +58,8 @@ export class UserInterface {
         }
 
         /* Display scene */
-        this._scene = new MainMenu(this, this._sendMessage);
+        this._scene = new MainMenuScene(this);
+        this._scene.addListener("message", this._sendMessage);
 
         this._scene_stage = new PIXI.Container();
         this._scene_stage.width = WIDTH;
@@ -81,16 +82,21 @@ export class UserInterface {
     /**
      * Transition to a new scene
      *
-     * @param scene Scene being transition to
-     * @param callback Callback to call once the new scene is finished entering
+     * @param {Scene} scene Scene transition to
+     * @param {() => void} callback Callback to call once the new scene enters
      */
     public setScene(scene: Scene, callback: () => void): void {
-        scene.exit(() => {
+        this._scene.exit(() => {
+            this._scene.removeListener("message", this._sendMessage);
+
             this.app.stage.removeChild(this._scene_stage);
-            this._scene = scene;
             this._scene_stage = new PIXI.Container();
             this.app.stage.addChild(this._scene_stage);
-            scene.enter(this._scene_stage, callback);
+
+            scene.enter(this._scene_stage, () => {
+                this._scene = scene;
+                this._scene.addListener("message", this._sendMessage);
+            });
         });
     }
     public toCanvasCoords(x: number, y: number): Vec2 {

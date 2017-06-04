@@ -6,6 +6,7 @@ import { Action, ActionType } from "../game/Action"
 import { Entity } from "../game/Entity"
 import { IDPool } from "../game/IDPool"
 import { GameState, GameStateChanger } from "../game/GameState"
+import { GameSystems } from "../game/GameSystems"
 import { Change, StartGame, EndTurn, CreateEntity, AttachComponent } from "../game/Changes"
 import { Vec2 } from "../game/Math"
 import { Player } from "./Player"
@@ -47,9 +48,14 @@ export class Game {
      * required to handle user actions and update the state accordingly.
      * In particular, it doesn't include systems for Rendering or AI.
      *
-     * @type {System}[]
+     * @type {System[]}
      */
-    private readonly _systems: System[]
+    private readonly _systems_arr: System[];
+    /**
+     * Dictionary of the same systems as those above
+     * @type {GameSystems}
+     */
+    private readonly _systems: GameSystems;
     /**
      * Players in the game
      * @type {[Player, Player]}
@@ -76,9 +82,12 @@ export class Game {
      * @param {[Player, Player]} players Players in the game
      */
     constructor(_players: [Player, Player]) {
-        this._systems = [
-            new GridSystem(this._id_pool, this._messengers, this._state),
-            new DeploySystem(this._id_pool, this._messengers, this._state)
+        this._systems = {
+            deploy: new DeploySystem(this._id_pool, this._messengers, this._state),
+            grid: new GridSystem(this._id_pool, this._messengers, this._state),
+        };
+        this._systems_arr = [
+            this._systems.deploy, this._systems.grid
         ];
         this._players = _players;
         this._readys = [false, false];
@@ -99,19 +108,22 @@ export class Game {
         }
 
         /* Initialize entities */
-        const changer = new GameStateChanger(this._state, this._systems);
+        const changer = new GameStateChanger(this._state, this._systems_arr);
         this.initEntities(changer);
         p1.initEntities(changer, this._id_pool);
         p2.initEntities(changer, this._id_pool);
 
         this._state = changer.state;
 
-        for (const system of this._systems) {
+        for (const system of this._systems_arr) {
             system.setState(this._state);
         }
 
-        p1.handleChanges(changer.changeset);
-        p2.handleChanges(changer.changeset);
+        /* FIXME: Delay added to give GUI a chance to catch up */
+        setTimeout(() => {
+            p1.handleChanges(changer.changeset);
+            p2.handleChanges(changer.changeset);
+        }, 500);
 
     }
     /**
@@ -185,7 +197,8 @@ export class Game {
      * Start the game
      */
     private startGame(): void {
-        const mutable_state = new GameStateChanger(this._state, this._systems);
+        const mutable_state =
+            new GameStateChanger(this._state, this._systems_arr);
         mutable_state.makeChange(new StartGame());
         this._state = mutable_state.state;
 
@@ -193,7 +206,7 @@ export class Game {
             this.endTurn(this._state.current_team);
         }, TURN_TIMEOUT);
 
-        for (const system of this._systems) {
+        for (const system of this._systems_arr) {
             system.setState(this._state);
         }
 
@@ -210,11 +223,12 @@ export class Game {
     public handleAction(team: TeamID, action: Action) {
         if (team != this._state.current_team) return;
 
-        const mutable_state = new GameStateChanger(this._state, this._systems);
+        const mutable_state =
+            new GameStateChanger(this._state, this._systems_arr);
 
-        action.execute(mutable_state, this._messengers, this._id_pool);
+        action.execute(mutable_state, this._systems);
 
-        for (const system of this._systems) {
+        for (const system of this._systems_arr) {
             system.setState(this._state);
         }
 
@@ -234,11 +248,17 @@ export class Game {
             clearTimeout(this._turn_timeout);
         }
 
-        const mutable_state = new GameStateChanger(this._state, this._systems);
+        const mutable_state =
+            new GameStateChanger(this._state, this._systems_arr);
+
+        for (const system of this._systems_arr) {
+            system.processTurnEnd(mutable_state, this._systems);
+        }
+
         mutable_state.makeChange(new EndTurn());
         this._state = mutable_state.state;
 
-        for (const system of this._systems) {
+        for (const system of this._systems_arr) {
             system.setState(this._state);
         }
 

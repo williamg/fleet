@@ -3,17 +3,23 @@
  * Defines a particular scene of the game. For example, the main menu is one
  * scene and the in game view is another scene.
  */
-import { Message } from "../../game/Message"
 import { UserInterface } from "./UserInterface"
+
+import { Observer } from "../../game/util"
+import { Message } from "../../game/Message"
+
 import * as PIXI from "pixi.js"
 
-export abstract class Scene {
+export type SceneEvent = "message"
+
+export abstract class Scene extends Observer<SceneEvent> {
     protected readonly _ui: UserInterface;
 
     constructor(ui: UserInterface) {
+        super();
+
         this._ui = ui;
     }
-
     /**
      * Render the scene
      */

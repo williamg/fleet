@@ -3,6 +3,7 @@
  */
 import { Entity } from "./Entity"
 import { GameStateChanger } from "./GameState"
+import { GameSystems } from "./GameSystems"
 import { IDPool } from "./IDPool"
 import { Messengers } from "./Messenger"
 import { UpdateComponent, AttachComponent, DetachComponent } from "./Changes"
@@ -37,11 +38,10 @@ export abstract class Action {
     /**
      * Execute an action
      * @param {GameStateChanger} changer    Current state changer
-     * @param {Messengers}       messengers Messengers object
-     * @param {IDPool}           id_pool    IDPool
+     * @param {GameSystems}      systems    Game systems
      */
-    public abstract execute(state: GameStateChanger, messengers: Messengers,
-                            id_pool: IDPool): void;
+    public abstract execute(state: GameStateChanger,
+                            systems: GameSystems): void;
 };
 /**
  * Move an entity from one cell to another
@@ -65,34 +65,7 @@ export class Move extends Action {
         this.dest = dest;
     }
 
-    public execute(changer: GameStateChanger, messengers: Messengers,
-                   id_pool: IDPool): void {
-        let pos = changer.state.getComponent<HexPosition>(
-            this.entity, ComponentType.HEX_POSITION);
-
-        if (pos == undefined) return;
-
-        const old_pos = new Vec2(pos!.data.x, pos!.data.y);
-
-        /* Announce that we're about to move the entity */
-        const res = messengers.beforeMove.publish({
-            entity: this.entity,
-            to: this.dest
-        }, changer);
-
-        /* If everyone's okay with us moving the entity, move it, and then tell
-         * everyone we moved it
-         */
-        if (res) {
-            pos = pos.with({ x: this.dest.x, y: this.dest.y });
-
-            changer.makeChange(new UpdateComponent(pos));
-
-            messengers.afterMove.publish({
-                entity: this.entity,
-                from: old_pos
-            }, changer);
-        }
+    public execute(changer: GameStateChanger, systems: GameSystems): void {
     }
 }
 /**
@@ -123,34 +96,9 @@ export class Deploy extends Action {
         this.target_index = target_index;
     }
 
-    public execute(changer: GameStateChanger, messengers: Messengers,
-                   id_pool: IDPool): void {
-        const data = {
-            deploying: this.entity,
-            dest: this.deploy_entity,
-            index: this.target_index
-        }
-
-        const res = messengers.beforeDeploy.publish(data, changer);
-
-        if (res) {
-            const deployable = changer.state.getComponent<Deployable>(
-                this.entity, ComponentType.DEPLOYABLE)!;
-            const deploy_loc = changer.state.getComponent<HexPosition>(
-                this.deploy_entity, ComponentType.HEX_POSITION)!;
-            const zone = changer.state.getComponent<DeployZone>(
-                this.deploy_entity, ComponentType.DEPLOY_ZONE)!;
-
-            const pos = newHexPosition(id_pool.component(), {
-                x: zone.data.targets[this.target_index].x + deploy_loc.data.x,
-                y: zone.data.targets[this.target_index].y + deploy_loc.data.y
-            });
-
-            changer.makeChange(new DetachComponent(this.entity, deployable));
-            changer.makeChange(new AttachComponent(this.entity, pos));
-
-            messengers.afterDeploy.publish(data, changer);
-        }
+    public execute(changer: GameStateChanger, systems: GameSystems): void {
+        systems.deploy.deploy(changer, systems, this.entity, this.deploy_entity,
+                              this.target_index);
     }
 }
 
