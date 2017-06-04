@@ -72,7 +72,7 @@ export class DeploySystem extends System {
      */
     public deploy(changer: GameStateChanger, systems: GameSystems,
                   deploying: Entity, zone: Entity, index: number): boolean {
-        if (!this.zoneValidForEntity(deploying, zone)) {
+        if (!this.zoneValidForEntity(systems, deploying, zone)) {
             return false;
         }
 
@@ -92,6 +92,7 @@ export class DeploySystem extends System {
             y: zone_pos.data.y + zone_comp.data.targets[index].y,
         });
 
+        systems.power.usePower(changer, zone, deployable_comp.data.deploy_cost);
         changer.makeChange(new DetachComponent(deploying, deployable_comp));
         changer.makeChange(new AttachComponent(deploying, pos_comp));
 
@@ -116,7 +117,7 @@ export class DeploySystem extends System {
         let result = Set<[Entity, number[]]>();
 
         for (const deploy_zone of this._deploy_zones) {
-            if (!this.zoneValidForEntity(entity, deploy_zone)) {
+            if (!this.zoneValidForEntity(systems, entity, deploy_zone)) {
                 continue;
             }
 
@@ -142,21 +143,31 @@ export class DeploySystem extends System {
     /**
      * Determine if a given deploy zone is valid for a given entity
      *
+     * @param  {GameSystems} systems Game systems
      * @param  {Entity}      entity  The entity being deployed
      * @param  {Entity}      zone    The entity providing a deploy zone
      * @return {boolean}             Whether or not the zone is valid
      */
-    private zoneValidForEntity(entity: Entity, zone: Entity): boolean {
+    private zoneValidForEntity(systems: GameSystems, entity: Entity,
+                               zone: Entity): boolean {
         const ent_team =
             this._state.getComponent<Team>(entity, ComponentType.TEAM)!;
         const zone_team =
             this._state.getComponent<Team>(zone, ComponentType.TEAM)!;
 
+        /* Zone must be the same team */
         if (ent_team.data.team != zone_team.data.team) {
             return false;
         }
 
-        /* Zone must be the same team */
+        const deployable = this._state.getComponent<Deployable>(
+            entity, ComponentType.DEPLOYABLE)!;
+
+        /* Zone must have enough power */
+        if (!systems.power.hasEnough(zone, deployable.data.deploy_cost)) {
+            return false;
+        }
+
         return true;
     }
     /**

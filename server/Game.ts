@@ -16,11 +16,13 @@ import { Messengers } from "../game/Messenger"
 import { System } from "../game/System"
 import { GridSystem } from "../game/systems/GridSystem"
 import { DeploySystem } from "../game/systems/DeploySystem"
+import { PowerSystem } from "../game/systems/PowerSystem"
 
 import { newTeam, Team, TeamID } from "../game/components/Team"
 import { newHexPosition } from "../game/components/HexPosition"
 import { newDeployZone } from "../game/components/DeployZone"
 import { newName } from "../game/components/Name"
+import { newPowerSource, PowerType } from "../game/components/PowerSource"
 
 export const END_TURN_EVENT = "endturn";
 export const ACTION_EVENT = "action";
@@ -85,9 +87,10 @@ export class Game {
         this._systems = {
             deploy: new DeploySystem(this._id_pool, this._messengers, this._state),
             grid: new GridSystem(this._id_pool, this._messengers, this._state),
+            power: new PowerSystem(this._id_pool, this._messengers, this._state)
         };
         this._systems_arr = [
-            this._systems.deploy, this._systems.grid
+            this._systems.deploy, this._systems.grid, this._systems.power
         ];
         this._players = _players;
         this._readys = [false, false];
@@ -162,12 +165,19 @@ export class Game {
             const team = newTeam(this._id_pool.component(), {
                 team: (i % 2) ? TeamID.TEAM_1 : TeamID.TEAM_2
             });
+            const power = newPowerSource(this._id_pool.component(), {
+                type: PowerType.SOLAR,
+                capacity: 100,
+                current: 100,
+                recharge: 25
+            });
 
             state.makeChange(new CreateEntity(dp));
             state.makeChange(new AttachComponent(dp, pos));
             state.makeChange(new AttachComponent(dp, zone));
             state.makeChange(new AttachComponent(dp, name));
             state.makeChange(new AttachComponent(dp, team));
+            state.makeChange(new AttachComponent(dp, power));
         }
 
     }

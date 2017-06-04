@@ -44,7 +44,9 @@ export const Style = {
     colors: {
         white: { num: 0xFFFFFF, str: "#FFFFFF" },
         green: { num: 0xB5FF83, str: "#B5FF83" },
-        yellow: { num: 0xFFDD56, str: "#FFDD56" }
+        yellow: { num: 0xFFDD56, str: "#FFDD56" },
+        red: { num: 0x8A0000, str: "#8A0000" },
+        neon_blue: { num: 0x84CDFF, str: "#84CDFF" }
     }
 };
 
@@ -137,10 +139,12 @@ export class Resource extends PIXI.Container {
         this.graphics.drawRoundedRect(20, 0, this.draw_width, 15, 7.5);
         this.graphics.endFill();
 
-        this.graphics.lineStyle(0, 0, 0);
-        this.graphics.beginFill(this.color, 1);
-        this.graphics.drawRoundedRect(23, 3, this.percent*(this.draw_width - 6),
-                                      9, 5);
-        this.graphics.endFill();
+        if (this.percent > 0) {
+            this.graphics.lineStyle(0, 0, 0);
+            this.graphics.beginFill(this.color, 1);
+            this.graphics.drawRoundedRect(
+                23, 3, this.percent*(this.draw_width - 6), 9, 5);
+            this.graphics.endFill();
+        }
     }
 }
