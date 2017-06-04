@@ -33,6 +33,7 @@ import { serializeAction }
 import { DeploySystem } from "../../../game/systems/DeploySystem"
 import { GridSystem } from "../../../game/systems/GridSystem"
 import { HangerSystem } from "../../../game/systems/HangerSystem"
+import { PowerSystem } from "../../../game/systems/PowerSystem"
 
 import { List } from "immutable"
 import * as PIXI from "pixi.js"
@@ -111,10 +112,13 @@ export class GameScene extends Scene {
             grid: new GridSystem(this._id_pool, this._messengers,
                                  this._game_state),
             hanger: new HangerSystem(this._id_pool, this._messengers,
-                                     this._game_state)
+                                     this._game_state),
+            power: new PowerSystem(this._id_pool, this._messengers,
+                                   this._game_state)
         };
         this._systems_arr = [
-            this._systems.deploy, this._systems.grid, this._systems.hanger
+            this._systems.deploy, this._systems.grid, this._systems.hanger,
+            this._systems.power
         ];
 
         this._view = new DesktopGameView(ui, this._systems, friendly,

@@ -10,6 +10,7 @@ import { Observer, LOG } from "../../../../game/util"
 import { Vec2 } from "../../../../game/Math"
 
 import { Deployable } from "../../../../game/components/Deployable"
+import { PowerSource, PowerType } from "../../../../game/components/PowerSource"
 
 import { TeamID } from "../../../../game/components/Team"
 import { Name } from "../../../../game/components/Name"
@@ -71,7 +72,7 @@ export class TargetWindow extends PIXI.Container {
     /* Labels */
     private target: Label;
     private health: Resource;
-    private battery: Resource;
+    private power: Resource;
     private recharge: Label;
     private move_cost: Label;
     private pilot_name: Label;
@@ -141,18 +142,18 @@ export class TargetWindow extends PIXI.Container {
         this.health.x = HEALTH.x;
         this.health.y = HEALTH.y;
         this.health.alpha = 0.2;
-        this.battery =
+        this.power =
             new Resource("battery.png", RESOURCE_WIDTH, 0xFFFFFF, 0.0);
-        this.battery.x = BATTERY.x;
-        this.battery.y = BATTERY.y;
-        this.battery.alpha = 0.2;
+        this.power.x = BATTERY.x;
+        this.power.y = BATTERY.y;
+        this.power.alpha = 0.2;
         this.recharge =
             new Label("recharge.png", "--", Style.text.normal, RECHARGE);
         this.move_cost =
             new Label("movement.png", "--", Style.text.normal, MOVE_COST);
         this.general.addChild(this.target, this.recharge,
                               this.move_cost, this.health,
-                              this.battery);
+                              this.power);
 
         this.pilot_name =
             new Label(undefined, "--", Style.text.header, PILOT_NAME);
@@ -228,7 +229,7 @@ export class TargetWindow extends PIXI.Container {
 
         this.displayShipInfo(this._targeted);
         this.displayHealth(this._targeted);
-        this.displayBattery(this._targeted);
+        this.displayPower(this._targeted);
         this.displayMovement(this._targeted);
         /*this.displayPilot(this._targeted);
 
@@ -311,18 +312,39 @@ export class TargetWindow extends PIXI.Container {
         this.health.alpha = 0.2;
     }
     /**
-     * Display battery & charge info of entity
+     * Display power info of entity
      *
      * @param entity Entity to display
      */
-    private displayBattery(entity: Entity): void {
+    private displayPower(entity: Entity): void {
         /* If this entity has a charge component, draw the appropriate charge
          * bar
          */
-        this.battery.setColor(Style.colors.white.num);
-        this.battery.setPercent(0);
-        this.recharge.label.text = "--";
-        this.battery.alpha = 0.2;
+        const power_comp = this._game_state.getComponent<PowerSource>(
+            entity, ComponentType.POWER_SOURCE);
+
+        if (power_comp) {
+            switch (power_comp.data.type) {
+                case PowerType.ANTI_MATTER:
+                    this.power.setColor(Style.colors.red.num);
+                    break;
+                case PowerType.GENESIUM:
+                    this.power.setColor(Style.colors.neon_blue.num);
+                    break;
+                case PowerType.SOLAR:
+                    this.power.setColor(Style.colors.yellow.num);
+                    break;
+            }
+
+            this.power.setPercent(power_comp.data.current / power_comp.data.capacity);
+            this.recharge.label.text = power_comp.data.recharge.toString();
+            this.power.alpha = 1.0;
+        } else {
+            this.power.setColor(Style.colors.white.num);
+            this.power.setPercent(0);
+            this.recharge.label.text = "--";
+            this.power.alpha = 0.2;
+        }
     }
     /**
      * Display the movement/deploy cost for this entity
