@@ -139,10 +139,12 @@ export class Game {
      */
     private initEntities(state: GameStateChanger): void {
         const locs = [
-            { x: -3, y: 0},
-            { x: 3, y: 0},
-            { x: 0, y: 2},
-            { x: 0, y: -2}
+            { x: 4, y: 0},
+            { x: -4, y: 0},
+            { x: 0, y: 3},
+            { x: 0, y: -3},
+            { x: -4, y: 4},
+            { x: 4, y: -4}
         ];
 
         const dzdata = {
@@ -166,7 +168,7 @@ export class Game {
                 name: `Deploy Zone ${i}`
             });
             const team = newTeam(this._id_pool.component(), {
-                team: (i % 2) ? TeamID.TEAM_1 : TeamID.TEAM_2
+                team: (i % 2) ? TeamID.TEAM_2 : TeamID.TEAM_1
             });
             const power = newPowerSource(this._id_pool.component(), {
                 type: PowerType.SOLAR,
