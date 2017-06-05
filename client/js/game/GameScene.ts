@@ -97,6 +97,7 @@ export class GameScene extends Scene {
      */
     private readonly _onChangeUIState = this.changeUIState.bind(this);
     private readonly _onAction = this.sendAction.bind(this);
+    private readonly _onEndTurn = this.endTurn.bind(this);
 
     constructor(ui: UserInterface, friendly: TeamID) {
         super(ui);
@@ -207,10 +208,12 @@ export class GameScene extends Scene {
             this._ui_state.exit();
             this._ui_state.removeListener("action", this._onAction);
             this._ui_state.removeListener("change state", this._onChangeUIState);
+            this._ui_state.removeListener("end turn", this._onEndTurn);
         }
 
         new_state.addListener("action", this._onAction);
         new_state.addListener("change state", this._onChangeUIState);
+        new_state.addListener("end turn", this._onEndTurn);
         new_state.enter();
         this._ui_state = new_state;
     }
@@ -223,6 +226,13 @@ export class GameScene extends Scene {
         const message =
             new Message(MessageType.ACTION, serializeAction(action));
 
+        this.emit("message", message);
+    }
+    /**
+     * Send an end turn message to the server
+     */
+    private endTurn(): void {
+        const message = new Message(MessageType.END_TURN, "");
         this.emit("message", message);
     }
 

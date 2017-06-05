@@ -8,7 +8,7 @@
 import { Observer } from "../../../game/util"
 import { GameState } from "../../../game/GameState"
 
-export type UIStateEvent = "action" | "change state";
+export type UIStateEvent = "action" | "change state" | "end turn";
 
 export interface GameUIState extends Observer<UIStateEvent> {
     /**

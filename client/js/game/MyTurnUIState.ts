@@ -105,6 +105,7 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
         this.emit("change state", deploy);
     }
     private onEndTurn(): void {
+        this.emit("end turn");
     }
     private onHangerSelected(entity: Entity): void {
         this._view.clearHexStyles();

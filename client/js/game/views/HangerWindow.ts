@@ -36,6 +36,9 @@ const SHIP_NAME = new Vec2(40, 10);
 const TIMER_ICON = new Vec2(35, 296);
 const TIMER_LABEL = new Vec2(57, 292);
 
+const END_TURN_BUTTON = new Vec2(116, 285);
+const END_TURN_LABEL = new Vec2(78, 34);
+
 type ShipInfo = {
     label: Label;
     hovered: boolean;
@@ -104,6 +107,16 @@ export class HangerWindow extends FrameSprite {
      */
     private _time_remaining: PIXI.Text;
     /**
+     * End turn button
+     * @type {FrameSprite}
+     */
+    private _end_turn_button: PIXI.Sprite;
+    /**
+     * End turn label
+     * @type {PIXI.Text}
+     */
+    private _end_turn_label: PIXI.Text;
+    /**
      * Construct a new hanger window
      */
     constructor(ui: UserInterface, observer: Observer<GameInteractionEvent>,
@@ -124,8 +137,6 @@ export class HangerWindow extends FrameSprite {
         for (const wrapper of this._ship_wrappers) {
             this._ship_list.addChild(wrapper);
         }
-
-        this.setState(state);
 
         /* Hanger label */
         const hanger_label =
@@ -165,6 +176,23 @@ export class HangerWindow extends FrameSprite {
 
         this.addChild(timer_icon);
         this.addChild(this._time_remaining);
+
+        /* End turn button */
+        this._end_turn_button = PIXI.Sprite.fromFrame("end_turn_inactive.png");
+        this._end_turn_button.x = END_TURN_BUTTON.x;
+        this._end_turn_button.y = END_TURN_BUTTON.y;
+        this._end_turn_button.buttonMode = true;
+
+        this._end_turn_label =
+            new PIXI.Text("END TURN", Style.text.button_inactive);
+        this._end_turn_label.anchor.x = 0.5;
+        this._end_turn_label.anchor.y = 1;
+        this._end_turn_label.x = END_TURN_LABEL.x;
+        this._end_turn_label.y = END_TURN_LABEL.y;
+
+        this._end_turn_button.addChild(this._end_turn_label);
+        this.addChild(this._end_turn_button);
+        this.setState(state);
     }
     /**
      * Update the state of the HangerWindow
@@ -173,6 +201,23 @@ export class HangerWindow extends FrameSprite {
      */
     public setState(state: GameState) {
         this._state = state;
+
+        this._end_turn_button.removeAllListeners("click");
+
+        if (state.current_team == this._friendly) {
+            this._end_turn_button.interactive = true;
+            this._end_turn_label.style = Style.text.button;
+            this._end_turn_button.texture =
+                PIXI.Texture.fromFrame("end_turn.png");
+            this._end_turn_button.addListener("click", () => {
+                this._observer.emit("end turn");
+            });
+        } else {
+            this._end_turn_button.interactive = false;
+            this._end_turn_label.style = Style.text.button_inactive;
+            this._end_turn_button.texture =
+                PIXI.Texture.fromFrame("end_turn_inactive.png");
+        }
 
         /* Recompute entities */
         this._entities = this._systems.hanger.entities.filter((ent: Entity) => {

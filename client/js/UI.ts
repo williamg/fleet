@@ -28,7 +28,7 @@ export const Style = {
             fill: "#FFFFFF",
         }),
         button: new PIXI.TextStyle({
-            fontFamily: "Droid Sans",
+            fontFamily: "Arial",
             fontSize: 20,
             fill: "#FFFFFF",
             /* For some reason, drop shadow only works if text is stroked... */
@@ -39,6 +39,11 @@ export const Style = {
             dropShadowBlur: 2,
             dropShadowAngle: 0,
             dropShadowDistance: 0
+        }),
+        button_inactive: new PIXI.TextStyle({
+            fontFamily: "Arial",
+            fontSize: 20,
+            fill: "#212121",
         })
     },
     colors: {
@@ -46,7 +51,8 @@ export const Style = {
         green: { num: 0xB5FF83, str: "#B5FF83" },
         yellow: { num: 0xFFDD56, str: "#FFDD56" },
         red: { num: 0x8A0000, str: "#8A0000" },
-        neon_blue: { num: 0x84CDFF, str: "#84CDFF" }
+        neon_blue: { num: 0x84CDFF, str: "#84CDFF" },
+        dark_gray: { num: 0x212121, str: "#212121" }
     }
 };
 

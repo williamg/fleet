@@ -143,6 +143,7 @@ export class MoveUIState extends Observer<UIStateEvent> implements GameUIState {
             this._view, this._systems, this._friendly, this._game_state));
     }
     private onEndTurn(): void {
+        this.emit("end turn");
     }
     private onHexSelected(hex: Vec2): void {
         /* Check if the hex is valid */

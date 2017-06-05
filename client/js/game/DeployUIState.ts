@@ -169,6 +169,7 @@ export class DeployUIState extends Observer<UIStateEvent> implements GameUIState
             this._view, this._systems, this._friendly, this._game_state));
     }
     private onEndTurn(): void {
+        this.emit("end turn");
     }
     private onHexSelected(hex: Vec2): void {
         /* Case 1: We've already selected a deploy zone and this hex is within
