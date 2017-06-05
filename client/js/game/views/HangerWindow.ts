@@ -33,6 +33,9 @@ const SHIP_WIDTH = 260;
 const SHIP_ICON = new Vec2(5, 10);
 const SHIP_NAME = new Vec2(40, 10);
 
+const TIMER_ICON = new Vec2(35, 296);
+const TIMER_LABEL = new Vec2(57, 292);
+
 type ShipInfo = {
     label: Label;
     hovered: boolean;
@@ -96,6 +99,11 @@ export class HangerWindow extends FrameSprite {
      */
     private _ship_wrappers: PIXI.Graphics[];
     /**
+     * Label for the remaining time
+     * @type {PIXI.Text}
+     */
+    private _time_remaining: PIXI.Text;
+    /**
      * Construct a new hanger window
      */
     constructor(ui: UserInterface, observer: Observer<GameInteractionEvent>,
@@ -139,6 +147,24 @@ export class HangerWindow extends FrameSprite {
                 this.scrollHangerList(1);
             }
         });
+
+        /* Timer label */
+        const timer_icon = new FrameSprite("timer.png");
+        timer_icon.x = TIMER_ICON.x;
+        timer_icon.y = TIMER_ICON.y;
+
+        this._time_remaining = new PIXI.Text("--", new PIXI.TextStyle({
+            fontFamily: "Arial",
+            fontSize: 24,
+            fontWeight: "bold",
+            fill: "#FFFFFF"
+        }));
+
+        this._time_remaining.x = TIMER_LABEL.x;
+        this._time_remaining.y = TIMER_LABEL.y;
+
+        this.addChild(timer_icon);
+        this.addChild(this._time_remaining);
     }
     /**
      * Update the state of the HangerWindow
@@ -163,6 +189,17 @@ export class HangerWindow extends FrameSprite {
         });
 
         this.updateLabels();
+    }
+    /**
+     * Render the scene
+     */
+    public render(): void {
+        if (!this._state.started) return;
+
+        /* Update timer */
+        const time_remaining =
+            (30000 - (Date.now() - this._state.turn_start)) / 1000;
+        this._time_remaining.text = Math.floor(time_remaining).toString();
     }
     /**
      * Scroll the hanger list by a given amount

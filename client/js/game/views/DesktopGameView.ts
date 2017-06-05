@@ -116,6 +116,7 @@ export class DesktopGameView extends Observer<GameInteractionEvent> {
      */
     public render(delta: number): void {
         this._grid!.render(delta, this._game_state);
+        this._hanger_window!.render();
     }
     /**
      * Handle an updated game state

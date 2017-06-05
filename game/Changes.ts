@@ -63,7 +63,7 @@ export class StartGame extends Change {
             throw new Error("Attempting to start game already started");
         }
 
-        return state.with({ started: true });
+        return state.with({ started: true, turn_start: Date.now() });
     }
 };
 /**
