@@ -66,6 +66,7 @@ export class Move extends Action {
     }
 
     public execute(changer: GameStateChanger, systems: GameSystems): void {
+        systems.movement.move(changer, systems, this.entity, this.dest);
     }
 }
 /**

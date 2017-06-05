@@ -66,3 +66,43 @@ export class Observer<EventType extends string> extends EventEmitter {
         return super.addListener(event, fn);
     }
 }
+
+/**
+ * Priority queue
+ *
+ * Inefficient, too lazy to implement correctly for now.
+ */
+export enum Order {
+    LESS,
+    EQUAL,
+    GREATER
+}
+export type Comparator<T> = (a: T, b: T) => Order;
+
+export class PriorityQueue<T> {
+    private readonly _comparator: Comparator<T>;
+    private readonly _queue: T[];
+
+    constructor(comparator: Comparator<T>) {
+        this._comparator = comparator;
+        this._queue = [];
+    }
+
+    get size(): number { return this._queue.length; }
+
+    public pop(): T | undefined {
+        return this._queue.shift();
+    }
+
+    public push(val: T): void {
+        for (let i = 0; i < this._queue.length; ++i) {
+            if (this._comparator(val, this._queue[i]) == Order.LESS) {
+                this._queue.splice(i, 1, val);
+                return;
+            }
+        }
+
+        /* If we didn't return, add it to the end */
+        this._queue.push(val);
+    }
+}

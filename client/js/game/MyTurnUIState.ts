@@ -9,6 +9,7 @@ import { GameUIState, UIStateEvent } from "./GameUIState"
 import { ClientGameSystems } from "./GameScene"
 import { NotMyTurnUIState } from "./NotMyTurnUIState"
 import { DeployUIState } from "./DeployUIState"
+import { MoveUIState } from "./MoveUIState"
 import { GameView, HexStyle } from "./GameView"
 
 import { GameState } from "../../../game/GameState"
@@ -47,6 +48,7 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
     private readonly _onHangerSelected = this.onHangerSelected.bind(this);
     private readonly _onHexSelected = this.onHexSelected.bind(this);
     private readonly _onItem = this.onItem.bind(this);
+    private readonly _onMove = this.onMove.bind(this);
 
     constructor(view: GameView, systems: ClientGameSystems, friendly: TeamID,
                 game_state: GameState) {
@@ -82,6 +84,7 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
         this._view.addListener("end turn", this._onEndTurn);
         this._view.addListener("deploy", this._onDeploy);
         this._view.addListener("item", this._onItem);
+        this._view.addListener("move", this._onMove);
     }
     /**
      * @see client/js/game/GameUIState
@@ -92,6 +95,7 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
         this._view.removeListener("end turn", this._onEndTurn);
         this._view.removeListener("deploy", this._onDeploy);
         this._view.removeListener("item", this._onItem);
+        this._view.removeListener("move", this._onMove);
     }
     private onDeploy(entity: Entity): void {
         const deploy =
@@ -116,5 +120,11 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
         }
     }
     private onItem(): void {
+    }
+    private onMove(entity: Entity): void {
+        const move =
+            new MoveUIState(this._view, this._systems, this._friendly,
+                            this._game_state, entity);
+        this.emit("change state", move);
     }
 }

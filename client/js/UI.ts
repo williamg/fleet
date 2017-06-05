@@ -82,16 +82,17 @@ export class Label extends PIXI.Container {
 export class Resource extends PIXI.Container {
     private graphics: PIXI.Graphics;
     private draw_width: number;
-    private percent: number;
+    private current: number;
+    private max: number;
     private color: number;
+    private value: PIXI.Text;
 
     constructor(icon: string, width: number, color: number = 0xFFFFFF,
-                percent: number = 1.0) {
+                current: number, max: number) {
         super();
 
         this.height = 15;
         this.draw_width = width;
-        this.percent = percent;
         this.color = color;
 
         /* Draw the sprite. This doesn't change */
@@ -101,24 +102,38 @@ export class Resource extends PIXI.Container {
         icon_sprite.x = 7.5;
         icon_sprite.y = 7.5;
 
-        this.graphics = new PIXI.Graphics();
-        this.addChild(icon_sprite, this.graphics);
+        this.value = new PIXI.Text("--", new PIXI.TextStyle({
+            fontFamily: "Arial",
+            fontSize: 12,
+            fontWeight: "bold",
+            fill: "#FFFFFF",
+        }));
+        this.value.x = 45;
+        this.value.y = 0;
+        this.value.anchor.x = 1;
+        this.value.anchor.y = 0;
 
-        this.setPercent(percent);
+        this.graphics = new PIXI.Graphics();
+        this.addChild(icon_sprite, this.graphics, this.value);
+
+        this.setValues(current, max);
         this.setColor(color);
-        this.redraw();
     }
 
-    public setPercent(percent: number): void {
-        if (percent < 0) {
-            LOG.WARN("Resource with percent < 0");
-            percent = 0;
-        } else if (percent > 1.0) {
-            LOG.WARN("Resource with percent > 1");
-            percent = 1;
+    public setValues(current: number, max: number): void {
+        if (current < 0 || max < 0) {
+            LOG.WARN("Setting resource values < 0!");
+            current = 0;
+            max = 0;
         }
 
-        this.percent = percent;
+        if (current > max) {
+            LOG.WARN("Setting current > max!");
+            current = max;
+        }
+
+        this.current = current;
+        this.max = max;
         this.redraw();
     }
 
@@ -128,23 +143,33 @@ export class Resource extends PIXI.Container {
             color = 0;
         }
 
+        this.value.style.fill = "#" + color.toString(16);
         this.color = color;
         this.redraw();
     }
 
     private redraw(): void {
+        const percent = this.current / this.max;
+
         this.graphics.clear();
         this.graphics.lineStyle(1, this.color, 1);
         this.graphics.beginFill(this.color, 0.15);
         this.graphics.drawRoundedRect(20, 0, this.draw_width, 15, 7.5);
         this.graphics.endFill();
 
-        if (this.percent > 0) {
+        if (percent > 0) {
             this.graphics.lineStyle(0, 0, 0);
             this.graphics.beginFill(this.color, 1);
             this.graphics.drawRoundedRect(
-                23, 3, this.percent*(this.draw_width - 6), 9, 5);
+                48, 3, percent*(this.draw_width - 31), 9, 5);
             this.graphics.endFill();
         }
+
+/*
+        this.graphics.beginFill(this.color, 1);
+        this.graphics.drawCircle(27.5, 7.5, 7.5);
+        this.graphics.endFill();
+*/
+        this.value.text = this.current.toString();
     }
 }

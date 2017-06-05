@@ -50,12 +50,6 @@ export class GridSystem extends System {
     private _grid: Map<number, OccupancyStatus> =
         Map<number, OccupancyStatus>();
     /**
-     * Subscriber ID for handling movement events
-     * @type {SubscriberID}
-     */
-    private _on_move_sub: SubscriberID;
-
-    /**
      * Initialize the grid with the provided cells
      *
      * @param {IDPool}             id_pool    ID Pool
@@ -75,13 +69,6 @@ export class GridSystem extends System {
         for (let i = 0; i < tiles.length; ++i) {
             this._grid = this._grid.set(i, "free");
         }
-
-        /* Subscribe to movement event */
-        this._on_move_sub =
-            this._messengers.onMove.subscribe((evt, changer) => {
-                this._updateGrid(changer.state, evt.entity);
-                return true;
-            }, 0);
     }
     /**
      * Grid getter
@@ -92,25 +79,55 @@ export class GridSystem extends System {
     get index_map(): List<Vec2> {
         return this._index_map;
     }
-    public occupancyStatus(pos: Vec2): OccupancyStatus {
-        const index = this._index_map.findIndex((loc) => {
+    public indexOf(pos: Vec2): number {
+        ASSERT(this.inBounds(pos));
+
+        return this._index_map.findIndex((loc) => {
             return pos.equals(loc);
         });
+    }
+    public occupancyStatus(pos: Vec2): OccupancyStatus {
+        ASSERT(this.inBounds(pos));
 
-        if (index < 0) return "unknown";
-
-        return this._grid.get(index)!;
+        return this._grid.get(this.indexOf(pos))!;
     }
     public inBounds(pos: Vec2): boolean {
         return this._index_map.findIndex((loc) => {
             return pos.equals(loc);
         }) >= 0;
     }
+    public neighbors(pos: Vec2): Vec2[] {
+        const neighbor_offsets = [
+            new Vec2(1, 0),
+            new Vec2(0, 1),
+            new Vec2(-1, 0),
+            new Vec2(0, -1),
+            new Vec2(-1, 1),
+            new Vec2(1, -1)
+        ];
+        const neighbor_positions = neighbor_offsets.map((off: Vec2) => {
+            return off.add(pos);
+        });
+        const valid_neighbors =
+            neighbor_positions.filter(this.inBounds.bind(this));
+
+        return valid_neighbors;
+    }
     /**
      * Handle a HexPosition component being attached to an entity
      * @see System.componentAttached
      */
     public componentAttached(entity: Entity, comp: Component, state: GameState):
+        void {
+        if (comp.type == ComponentType.HEX_POSITION) {
+            this._updateGrid(state, entity);
+        }
+    }
+    /**
+     * Handle a HexPosition component being updated on an entity
+     * @see System.componentUpdated
+     */
+    public componentUpdated(entity: Entity, comp: Component, state: GameState):
         void {
         if (comp.type == ComponentType.HEX_POSITION) {
             this._updateGrid(state, entity);

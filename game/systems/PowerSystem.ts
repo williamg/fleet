@@ -56,6 +56,11 @@ export class PowerSystem extends System {
      */
     public processTurnEnd(state: GameStateChanger, systems: GameSystems) {
         for (const entity of this._entities) {
+            const team = state.state.getComponent<Team>(
+                entity, ComponentType.TEAM);
+
+            if (!team || team.data.team != state.state.current_team) continue;
+
             const power_comp = state.state.getComponent<PowerSource>(
                 entity, ComponentType.POWER_SOURCE)!;
 

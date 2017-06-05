@@ -6,9 +6,11 @@
 import { DeploySystem } from "./systems/DeploySystem"
 import { GridSystem } from "./systems/GridSystem"
 import { PowerSystem } from "./systems/PowerSystem"
+import { MovementSystem } from "./systems/MovementSystem"
 
 export interface GameSystems {
     readonly deploy: DeploySystem;
     readonly grid: GridSystem;
     readonly power: PowerSystem;
+    readonly movement: MovementSystem;
 };

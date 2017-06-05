@@ -17,6 +17,7 @@ import { System } from "../game/System"
 import { GridSystem } from "../game/systems/GridSystem"
 import { DeploySystem } from "../game/systems/DeploySystem"
 import { PowerSystem } from "../game/systems/PowerSystem"
+import { MovementSystem } from "../game/systems/MovementSystem"
 
 import { newTeam, Team, TeamID } from "../game/components/Team"
 import { newHexPosition } from "../game/components/HexPosition"
@@ -32,7 +33,7 @@ export const READY_EVENT = "ready";
  * Maximum turn length in milliseconds
  * @type {Number}
  */
-export const TURN_TIMEOUT = 10000;
+export const TURN_TIMEOUT = 30000;
 
 export class Game {
     /**
@@ -87,10 +88,12 @@ export class Game {
         this._systems = {
             deploy: new DeploySystem(this._id_pool, this._messengers, this._state),
             grid: new GridSystem(this._id_pool, this._messengers, this._state),
-            power: new PowerSystem(this._id_pool, this._messengers, this._state)
+            power: new PowerSystem(this._id_pool, this._messengers, this._state),
+            movement: new MovementSystem(this._id_pool, this._messengers, this._state)
         };
         this._systems_arr = [
-            this._systems.deploy, this._systems.grid, this._systems.power
+            this._systems.deploy, this._systems.grid, this._systems.power,
+            this._systems.movement
         ];
         this._players = _players;
         this._readys = [false, false];
@@ -237,6 +240,7 @@ export class Game {
             new GameStateChanger(this._state, this._systems_arr);
 
         action.execute(mutable_state, this._systems);
+        this._state = mutable_state.state;
 
         for (const system of this._systems_arr) {
             system.setState(this._state);

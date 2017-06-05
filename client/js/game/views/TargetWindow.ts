@@ -10,6 +10,7 @@ import { Observer, LOG } from "../../../../game/util"
 import { Vec2 } from "../../../../game/Math"
 
 import { Deployable } from "../../../../game/components/Deployable"
+import { Moveable } from "../../../../game/components/Moveable"
 import { PowerSource, PowerType } from "../../../../game/components/PowerSource"
 
 import { TeamID } from "../../../../game/components/Team"
@@ -138,12 +139,13 @@ export class TargetWindow extends PIXI.Container {
         /* Initialize labels with placeholder values */
         this.target =
             new Label(undefined, "--", Style.text.header, TARGET_NAME);
-        this.health = new Resource("health.png", RESOURCE_WIDTH, 0xFFFFFF, 0.0);
+        this.health =
+            new Resource("health.png", RESOURCE_WIDTH, 0xFFFFFF, 0, 100);
         this.health.x = HEALTH.x;
         this.health.y = HEALTH.y;
         this.health.alpha = 0.2;
         this.power =
-            new Resource("battery.png", RESOURCE_WIDTH, 0xFFFFFF, 0.0);
+            new Resource("battery.png", RESOURCE_WIDTH, 0xFFFFFF, 0, 100);
         this.power.x = BATTERY.x;
         this.power.y = BATTERY.y;
         this.power.alpha = 0.2;
@@ -308,7 +310,7 @@ export class TargetWindow extends PIXI.Container {
      */
     private displayHealth(entity: Entity): void {
         this.health.setColor(Style.colors.white.num);
-        this.health.setPercent(0);
+        this.health.setValues(0, 100);
         this.health.alpha = 0.2;
     }
     /**
@@ -336,12 +338,13 @@ export class TargetWindow extends PIXI.Container {
                     break;
             }
 
-            this.power.setPercent(power_comp.data.current / power_comp.data.capacity);
+            this.power.setValues(power_comp.data.current,
+                                 power_comp.data.capacity);
             this.recharge.label.text = power_comp.data.recharge.toString();
             this.power.alpha = 1.0;
         } else {
             this.power.setColor(Style.colors.white.num);
-            this.power.setPercent(0);
+            this.power.setValues(0, 100);
             this.recharge.label.text = "--";
             this.power.alpha = 0.2;
         }
@@ -358,9 +361,10 @@ export class TargetWindow extends PIXI.Container {
          */
         const deployable = this._game_state.getComponent<Deployable>(
             entity, ComponentType.DEPLOYABLE);
+        const moveable = this._game_state.getComponent<Moveable>(
+            entity, ComponentType.MOVEABLE);
 
-        if (deployable)
-        {
+        if (deployable) {
             this.move_cost.label.text =
                 deployable.data.deploy_cost.toString();
             this.move_cost.alpha = 1.0;
@@ -374,13 +378,37 @@ export class TargetWindow extends PIXI.Container {
                 PIXI.Texture.fromFrame("active_move.png");
 
             if (this.buttons_visible) {
+                this.move_button.removeAllListeners("click");
                 this.move_button.on("click", () => {
                     this._observer.emit("deploy", entity);
                 });
             }
-        }
-        else
-        {
+        } else if (moveable) {
+            this.move_cost.label.text =
+                moveable.data.move_cost.toString();
+            this.move_cost.alpha = 1.0;
+
+            /* Just check if this entity has enough power to move one tile */
+            const power = this._game_state.getComponent<PowerSource>(
+                entity, ComponentType.POWER_SOURCE);
+
+            if (power && power.data.current >= moveable.data.move_cost) {
+                this.move_button.texture =
+                    PIXI.Texture.fromFrame("active_move.png");
+
+                if (this.buttons_visible) {
+                    this.move_button.removeAllListeners("click");
+                    this.move_button.on("click", () => {
+                        this._observer.emit("move", entity);
+                    });
+                }
+
+            } else {
+                this.move_button.texture =
+                 PIXI.Texture.fromFrame("inactive_move.png");
+                this.move_button.removeAllListeners("click");
+            }
+        } else {
             this.move_cost.label.text = "";
             this.move_cost.alpha = 0.2;
             this.move_button.texture =
