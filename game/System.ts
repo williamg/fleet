@@ -54,6 +54,15 @@ export abstract class System {
     public componentAttached(entity: Entity, comp: Component, state: GameState):
         void {}
     /**
+     * Called whenever a component gets updated 
+     *
+     * @param {Entity}    entity Entity
+     * @param {Component} comp   Component updated
+     * @param {GameState} state  Current game state
+     */
+    public componentUpdated(entity: Entity, comp: Component, state: GameState):
+        void {}
+    /**
      * Called whenever a component gets removed from an entity
      *
      * @param {Entity}    entity Entity

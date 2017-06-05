@@ -154,7 +154,7 @@ export class GameStateChanger {
     /**
      * Apply a change to the game state
      */
-    public makeChange(change: Change) {
+    public makeChange(change: Change): void {
         this._state = change.apply(this._state);
         this._changeset = this._changeset.push(change);
 
@@ -182,6 +182,17 @@ export class GameStateChanger {
 
                 for (const system of this._systems_arr) {
                     system.componentDetached(entity, comp, this._state);
+                }
+                return;
+            }
+            case ChangeType.UPDATE_COMP: {
+                const comp = (change as UpdateComponent).component;
+                const entity = this._state.entities.findKey((ids) => {
+                    return ids.contains(comp.id);
+                })!;
+
+                for (const system of this._systems_arr) {
+                    system.componentUpdated(entity, comp, this._state);
                 }
                 return;
             }

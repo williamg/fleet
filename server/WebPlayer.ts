@@ -21,6 +21,8 @@ import { Change, CreateEntity, AttachComponent } from "../game/Changes"
 import { Deployable, newDeployable } from "../game/components/Deployable"
 import { Name, newName } from "../game/components/Name"
 import { Team, TeamID, newTeam } from "../game/components/Team"
+import { PowerSource, PowerType, newPowerSource }
+    from "../game/components/PowerSource"
 
 import { List } from "immutable"
 
@@ -53,10 +55,18 @@ export class WebPlayer extends Player {
             const team = newTeam(pool.component(), {
                 team: this.team
             });
+            const max = 50 + Math.floor(50 * Math.random());
+            const power = newPowerSource(pool.component(), {
+                type: Math.floor(3 * Math.random()),
+                capacity: max,
+                current: max,
+                recharge: 10 + Math.floor(15 * Math.random()),
+            });
 
             state.makeChange(new AttachComponent(ent, name));
             state.makeChange(new AttachComponent(ent, deployable));
             state.makeChange(new AttachComponent(ent, team));
+            state.makeChange(new AttachComponent(ent, power));
         }
     }
     /**

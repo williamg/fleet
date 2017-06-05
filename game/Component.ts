@@ -14,7 +14,8 @@ export enum ComponentType {
     NAME,
     DEPLOYABLE,
     DEPLOY_ZONE,
-    POWER_SOURCE
+    POWER_SOURCE,
+    MOVEABLE
 };
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of
@@ -81,7 +82,9 @@ export class ComponentImpl<Data> extends Component {
         let data: Data = this.data;
 
         for (let p in data) {
-            data[p] = updates[p] || data[p];
+            if (updates[p] != undefined) {
+                data[p] = updates[p]!;
+            }
         }
 
         return new ComponentImpl<Data>(this.type, this.id, data);

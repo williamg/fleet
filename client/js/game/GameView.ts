@@ -12,7 +12,7 @@ import { TeamID } from "../../../game/components/Team"
 
 import * as PIXI from "pixi.js"
 
-export type GameInteractionEvent = "hex click" | "hanger ship click" |
+export type GameInteractionEvent = "hex click" | "hanger ship click" | "move" |
     "deploy" | "cancel" | "item" | "end turn";
 
 export enum HexStyle {
