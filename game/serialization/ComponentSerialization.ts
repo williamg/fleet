@@ -10,6 +10,7 @@ import { DeployableData } from "../components/Deployable"
 import { DeployZoneData } from "../components/DeployZone"
 import { PowerSourceData } from "../components/PowerSource"
 import { MoveableData } from "../components/Moveable"
+import { ItemData } from "../components/Items"
 import { ASSERT } from "../util"
 
 /**

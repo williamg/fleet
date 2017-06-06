@@ -8,6 +8,7 @@ import { GameStateChanger, GameState } from "../game/GameState"
 import { MatchInfo } from "../game/MatchInfo"
 import { END_TURN_EVENT, READY_EVENT } from "./Game"
 import { IDPool } from "../game/IDPool"
+import { SystemRegistry } from "../game/System"
 
 import { Change, CreateEntity, AttachComponent } from "../game/Changes"
 
@@ -20,9 +21,13 @@ import { List } from "immutable"
 export class AIPlayer extends Player {
     private _first_changes_rx: boolean = false;
     private _state: GameState = new GameState();
+    private readonly _systems: SystemRegistry;
 
     constructor(team: TeamID) {
         super("AI Player", team);
+
+        this._systems = new SystemRegistry(new IDPool(), this._state);
+
     }
 
     public matchFound(info: MatchInfo): void {
@@ -52,7 +57,7 @@ export class AIPlayer extends Player {
 
     public handleChanges(changeset: List<Change>): void {
         /* Apply changeset */
-        const changer = new GameStateChanger(this._state, []);
+        const changer = new GameStateChanger(this._state, this._systems);
 
         changeset.forEach((change) => {
             if (!change) return false;

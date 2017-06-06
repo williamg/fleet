@@ -2,13 +2,11 @@
  * @file game/PowerSystem.ts
  * Processes power systems on entities
  */
-import { System } from "../System"
+import { System, SystemObserver, SystemRegistry } from "../System"
 import { IDPool } from "../IDPool"
-import { Messengers } from "../Messenger"
 import { Entity } from "../Entity"
 import { Component, ComponentType } from "../Component"
 import { GameState, GameStateChanger } from "../GameState"
-import { GameSystems } from "../GameSystems"
 import { UpdateComponent } from "../Changes"
 import { ASSERT } from "../util"
 import { clamp } from "../Math"
@@ -24,8 +22,8 @@ export class PowerSystem extends System {
      */
     private _entities: List<Entity> = List<Entity>();
 
-    constructor(id_pool: IDPool, messengers: Messengers, state: GameState) {
-        super(id_pool, messengers, state);
+    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
+        super(id_pool, observer, state);
     }
     /**
      * Handle a Deployable component being attached to an entity
@@ -54,7 +52,7 @@ export class PowerSystem extends System {
     /**
      * At the end of the turn, recharge batteries where appropriate
      */
-    public processTurnEnd(state: GameStateChanger, systems: GameSystems) {
+    public processTurnEnd(state: GameStateChanger, systems: SystemRegistry) {
         for (const entity of this._entities) {
             const team = state.state.getComponent<Team>(
                 entity, ComponentType.TEAM);

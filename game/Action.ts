@@ -3,9 +3,8 @@
  */
 import { Entity } from "./Entity"
 import { GameStateChanger } from "./GameState"
-import { GameSystems } from "./GameSystems"
+import { SystemRegistry } from "./System"
 import { IDPool } from "./IDPool"
-import { Messengers } from "./Messenger"
 import { UpdateComponent, AttachComponent, DetachComponent } from "./Changes"
 import { Vec2 }  from "./Math"
 
@@ -13,6 +12,9 @@ import { ComponentType } from "./Component"
 import { HexPosition, newHexPosition } from "./components/HexPosition"
 import { DeployZone } from "./components/DeployZone"
 import { Deployable } from "./components/Deployable"
+
+import { MovementSystem } from "./systems/MovementSystem"
+import { DeploySystem } from "./systems/DeploySystem"
 
 /**
  * Type of action
@@ -38,10 +40,10 @@ export abstract class Action {
     /**
      * Execute an action
      * @param {GameStateChanger} changer    Current state changer
-     * @param {GameSystems}      systems    Game systems
+     * @param {SystemRegistry}   systems    System registry
      */
     public abstract execute(state: GameStateChanger,
-                            systems: GameSystems): void;
+                            systems: SystemRegistry): void;
 };
 /**
  * Move an entity from one cell to another
@@ -65,8 +67,9 @@ export class Move extends Action {
         this.dest = dest;
     }
 
-    public execute(changer: GameStateChanger, systems: GameSystems): void {
-        systems.movement.move(changer, systems, this.entity, this.dest);
+    public execute(changer: GameStateChanger, systems: SystemRegistry): void {
+        const move_system = systems.lookup(MovementSystem);
+        move_system.move(changer, systems, this.entity, this.dest);
     }
 }
 /**
@@ -97,9 +100,10 @@ export class Deploy extends Action {
         this.target_index = target_index;
     }
 
-    public execute(changer: GameStateChanger, systems: GameSystems): void {
-        systems.deploy.deploy(changer, systems, this.entity, this.deploy_entity,
-                              this.target_index);
+    public execute(changer: GameStateChanger, systems: SystemRegistry): void {
+        const deploy_system = systems.lookup(DeploySystem);
+        deploy_system.deploy(changer, systems, this.entity, this.deploy_entity,
+                             this.target_index);
     }
 }
 

@@ -5,16 +5,18 @@
  * for more info but nothing else.
  */
 import { GameUIState, UIStateEvent } from "./GameUIState"
-import { ClientGameSystems } from "./GameScene"
 import { MyTurnUIState } from "./MyTurnUIState"
 import { GameView, HexStyle } from "./GameView"
 
 import { GameState } from "../../../game/GameState"
 import { Entity } from "../../../game/Entity"
 import { Vec2 } from "../../../game/Math"
+import { SystemRegistry } from "../../../game/System"
 import { Observer } from "../../../game/util"
 
 import { TeamID } from "../../../game/components/Team"
+
+import { GridSystem } from "../../../game/systems/GridSystem"
 
 export class NotMyTurnUIState extends Observer<UIStateEvent> implements GameUIState {
     /**
@@ -23,10 +25,10 @@ export class NotMyTurnUIState extends Observer<UIStateEvent> implements GameUISt
      */
     private readonly _view: GameView;
     /**
-     * Systems
-     * @type {ClientGameSystems}
+     * System registry
+     * @type {SystemRegistry}
      */
-    private readonly _systems: ClientGameSystems;
+    private readonly _systems: SystemRegistry;
     /**
      * Friendly team
      * @type {TeamID}
@@ -43,7 +45,7 @@ export class NotMyTurnUIState extends Observer<UIStateEvent> implements GameUISt
     private readonly _onHangerSelected = this.onHangerSelected.bind(this);
     private readonly _onHexSelected = this.onHexSelected.bind(this);
 
-    constructor(view: GameView, systems: ClientGameSystems, friendly: TeamID,
+    constructor(view: GameView, systems: SystemRegistry, friendly: TeamID,
                 game_state: GameState) {
         super();
 
@@ -87,7 +89,8 @@ export class NotMyTurnUIState extends Observer<UIStateEvent> implements GameUISt
         this._view.showEntityInfo(entity);
     }
     private onHexSelected(hex: Vec2): void {
-        const status = this._systems.grid.occupancyStatus(hex);
+        const grid_system = this._systems.lookup(GridSystem);
+        const status = grid_system.occupancyStatus(hex);
 
         if (status != "free" && status != "unknown") {
             this._view.showEntityInfo(status);

@@ -4,7 +4,6 @@
  * and timer countdown
  */
 import { GameInteractionEvent } from "../GameView"
-import { ClientGameSystems } from "../GameScene"
 
 import { Style, FrameSprite, Label, Resource } from "../../UI"
 import { UserInterface } from "../../UserInterface"
@@ -13,10 +12,13 @@ import { ComponentType } from "../../../../game/Component"
 import { Entity } from "../../../../game/Entity"
 import { GameState } from "../../../../game/GameState"
 import { clamp, Vec2 } from "../../../../game/Math"
+import { SystemRegistry } from "../../../../game/System"
 import { Observer, LOG } from "../../../../game/util"
 
 import { Team, TeamID } from "../../../../game/components/Team"
 import { Name } from "../../../../game/components/Name"
+
+import { HangerSystem } from "../../../../game/systems/HangerSystem"
 
 import { List } from "immutable"
 import * as PIXI from "pixi.js"
@@ -58,10 +60,10 @@ export class HangerWindow extends FrameSprite {
      */
     private readonly _observer: Observer<GameInteractionEvent>;
     /**
-     * Systems
-     * @type {ClientGameSystems}
+     * System registry
+     * @type {SystemRegistry}
      */
-    private readonly _systems: ClientGameSystems;
+    private readonly _systems: SystemRegistry;
     /**
      * ID of team that is considered friendly
      * @type {TeamID}
@@ -120,7 +122,7 @@ export class HangerWindow extends FrameSprite {
      * Construct a new hanger window
      */
     constructor(ui: UserInterface, observer: Observer<GameInteractionEvent>,
-                systems: ClientGameSystems, friendly: TeamID, state: GameState) {
+                systems: SystemRegistry, friendly: TeamID, state: GameState) {
         super("hanger_frame.png");
         this._ui = ui;
         this._observer = observer;
@@ -220,7 +222,8 @@ export class HangerWindow extends FrameSprite {
         }
 
         /* Recompute entities */
-        this._entities = this._systems.hanger.entities.filter((ent: Entity) => {
+        const hanger_system = this._systems.lookup(HangerSystem);
+        this._entities = hanger_system.entities.filter((ent: Entity) => {
             const team =
                 this._state.getComponent<Team>(ent, ComponentType.TEAM);
             const name =

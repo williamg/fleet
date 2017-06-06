@@ -17,11 +17,9 @@ import { Scene } from "../Scene"
 import { Action } from "../../../game/Action"
 import { Change } from "../../../game/Changes"
 import { GameState, GameStateChanger } from "../../../game/GameState"
-import { GameSystems } from "../../../game/GameSystems"
 import { IDPool } from "../../../game/IDPool"
 import { Message, MessageType } from "../../../game/Message"
-import { Messengers } from "../../../game/Messenger"
-import { System } from "../../../game/System"
+import { System, SystemRegistry } from "../../../game/System"
 
 import { TeamID } from "../../../game/components/Team"
 
@@ -38,13 +36,6 @@ import { MovementSystem } from "../../../game/systems/MovementSystem"
 
 import { List } from "immutable"
 import * as PIXI from "pixi.js"
-
-/**
- * Dictionary keeping track of systems needed to perform client operations
- */
-export interface ClientGameSystems extends GameSystems {
-    readonly hanger: HangerSystem;
-}
 
 export class GameScene extends Scene {
     /**
@@ -63,20 +54,10 @@ export class GameScene extends Scene {
      */
     private readonly _id_pool: IDPool;
     /**
-     * Messengers for system initialization
-     * @type {Messengers}
+     * Systems registry
+     * @type {SystemRegistry}
      */
-    private readonly _messengers: Messengers;
-    /**
-     * Dictionary of systems needed by the client side of things
-     * @type {UISystems}
-     */
-    private readonly _systems: ClientGameSystems;
-    /**
-     * Array of systems needed by the client side of things
-     * @type {System[]}
-     */
-    private readonly _systems_arr: System[];
+    private readonly _systems: SystemRegistry;
     /**
      * The current state of the UI
      * @type {GameUIState}
@@ -103,27 +84,15 @@ export class GameScene extends Scene {
         super(ui);
 
         this._friendly = friendly;
-
-        this._id_pool = new IDPool();
-        this._messengers = new Messengers();
         this._game_state = new GameState();
+        this._id_pool = new IDPool();
 
-        this._systems = {
-            deploy: new DeploySystem(this._id_pool, this._messengers,
-                                     this._game_state),
-            grid: new GridSystem(this._id_pool, this._messengers,
-                                 this._game_state),
-            hanger: new HangerSystem(this._id_pool, this._messengers,
-                                     this._game_state),
-            power: new PowerSystem(this._id_pool, this._messengers,
-                                   this._game_state),
-            movement: new MovementSystem(this._id_pool, this._messengers,
-                                         this._game_state)
-        };
-        this._systems_arr = [
-            this._systems.deploy, this._systems.grid, this._systems.hanger,
-            this._systems.power, this._systems.movement
-        ];
+        this._systems = new SystemRegistry(this._id_pool, this._game_state);
+        this._systems.register(DeploySystem);
+        this._systems.register(GridSystem);
+        this._systems.register(HangerSystem);
+        this._systems.register(PowerSystem);
+        this._systems.register(MovementSystem);
 
         this._view = new DesktopGameView(ui, this._systems, friendly,
                                          this._game_state);
@@ -183,18 +152,14 @@ export class GameScene extends Scene {
      */
     private handleChanges(changes: List<Change>): void {
         const changer =
-            new GameStateChanger(this._game_state, this._systems_arr);
+            new GameStateChanger(this._game_state, this._systems);
 
         for (const change of changes) {
             changer.makeChange(change);
         }
 
         this._game_state = changer.state;
-
-        for (const system of this._systems_arr) {
-            system.setState(this._game_state);
-        }
-
+        this._systems.setState(this._game_state);
         this._ui_state.setState(this._game_state);
         this._view.setState(this._game_state);
     }

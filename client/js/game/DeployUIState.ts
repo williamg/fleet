@@ -9,7 +9,6 @@
  *         zone to deploy the ship to
  */
 import { GameUIState, UIStateEvent } from "./GameUIState"
-import { ClientGameSystems } from "./GameScene"
 import { NotMyTurnUIState } from "./NotMyTurnUIState"
 import { MyTurnUIState } from "./MyTurnUIState"
 import { GameView, CancelPos, HexStyle } from "./GameView"
@@ -19,11 +18,14 @@ import { ComponentType } from "../../../game/Component"
 import { Entity } from "../../../game/Entity"
 import { GameState } from "../../../game/GameState"
 import { Vec2 } from "../../../game/Math"
+import { SystemRegistry } from "../../../game/System"
 import { Observer } from "../../../game/util"
 
 import { TeamID } from "../../../game/components/Team"
 import { HexPosition } from "../../../game/components/HexPosition"
 import { DeployZone } from "../../../game/components/DeployZone"
+
+import { DeploySystem } from "../../../game/systems/DeploySystem"
 
 import { Set } from "immutable"
 
@@ -41,10 +43,10 @@ export class DeployUIState extends Observer<UIStateEvent> implements GameUIState
      */
     private readonly _view: GameView;
     /**
-     * Systems
-     * @type {ClientGameSystems}
+     * System registry
+     * @type {SystemRegistry}
      */
-    private readonly _systems: ClientGameSystems;
+    private readonly _systems: SystemRegistry;
     /**
      * Friendly team
      * @type {TeamID}
@@ -78,7 +80,7 @@ export class DeployUIState extends Observer<UIStateEvent> implements GameUIState
     private readonly _onEndTurn = this.onEndTurn.bind(this);
     private readonly _onHexSelected = this.onHexSelected.bind(this);
 
-    constructor(view: GameView, systems: ClientGameSystems, friendly: TeamID,
+    constructor(view: GameView, systems: SystemRegistry, friendly: TeamID,
                 game_state: GameState, deploying: Entity) {
         super();
 
@@ -105,7 +107,8 @@ export class DeployUIState extends Observer<UIStateEvent> implements GameUIState
         }
 
         /* Cache targets */
-        const targets = this._systems.deploy.getDeployTargets(
+        const deploy_system = this._systems.lookup(DeploySystem);
+        const targets = deploy_system.getDeployTargets(
             this._systems, this._deploying);
 
         this._valid_targets = targets.map((entry: [Entity, number[]]) => {

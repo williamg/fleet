@@ -7,8 +7,7 @@ import { Component, ComponentID, ComponentType } from "../Component"
 import { Entity } from "../Entity"
 import { IDPool } from "../IDPool"
 import { GameState, GameStateChanger } from "../GameState"
-import { System } from "../System"
-import { Messengers, SubscriberID, OnMove } from "../Messenger"
+import { System, SystemObserver } from "../System"
 import { Vec2 } from "../Math"
 import { HexPosition } from "../components/HexPosition"
 import { ASSERT, LOG } from "../util"
@@ -57,20 +56,18 @@ export class GridSystem extends System {
      * Initialize the grid with the provided cells
      *
      * @param {IDPool}             id_pool    ID Pool
-     * @param {Messengers}         messengers Messengers
+     * @param {SystemObserver}     observer   System observer
      * @param {GameState}          state      GameState
-     * @param {[number, number][]} tiles      Map/tile coordinates
      */
-    constructor(id_pool: IDPool, messengers: Messengers,
-                state: GameState, tiles: [number, number][] = MAP) {
-        super(id_pool, messengers, state);
+    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
+        super(id_pool, observer, state);
 
         /* Initialize empty grid */
-        this._index_map = List<Vec2>(tiles.map(([x, y]) => {
+        this._index_map = List<Vec2>(MAP.map(([x, y]) => {
             return new Vec2(x, y);
         }));
 
-        for (let i = 0; i < tiles.length; ++i) {
+        for (let i = 0; i < MAP.length; ++i) {
             this._grid = this._grid.set(i, "free");
         }
     }

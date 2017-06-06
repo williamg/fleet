@@ -7,9 +7,8 @@ import { UpdateComponent, AttachComponent } from "../Changes"
 import { Entity } from "../Entity"
 import { IDPool } from "../IDPool"
 import { GameState, GameStateChanger } from "../GameState"
-import { GameSystems } from "../GameSystems"
-import { System } from "../System"
-import { Messengers, OnMove, OnDeploy } from "../Messenger"
+import { System, SystemObserver, SystemRegistry, DeployEvent, MoveEvent }
+    from "../System"
 import { Vec2 } from "../Math"
 import { ASSERT, LOG, Order, PriorityQueue } from "../util"
 
@@ -17,57 +16,62 @@ import { HexPosition } from "../components/HexPosition"
 import { Moveable, newMoveable } from "../components/Moveable"
 import { PowerSource } from "../components/PowerSource"
 
+import { PowerSystem } from "./PowerSystem"
+import { GridSystem } from "./GridSystem"
+
 import { Map, Set } from "immutable"
 
 export class MovementSystem extends System {
     /**
      * Initialize the system
      *
-     * @param {IDPool}         id_pool    ID Pool
-     * @param {Messengers}     messengers Messengers
-     * @param {GameState}      state      Game state
+     * @param {IDPool}         id_pool  ID Pool
+     * @param {SystemObserver} observer System observer
+     * @param {GameState}      state    Game state
      */
-    constructor(id_pool: IDPool, messengers: Messengers, state: GameState) {
-        super(id_pool, messengers, state);
+    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
+        super(id_pool, observer, state);
 
-        messengers.onDeploy.subscribe((deploy, changer) => {
-            return this.onDeploy(deploy, changer);
-        }, 0);
+        observer.addListener("deploy", (event: DeployEvent) => {
+            return this.onDeploy(event);
+        });
     }
-    public onDeploy(deploy: OnDeploy, changer: GameStateChanger): boolean {
+    public onDeploy(event: DeployEvent): boolean {
         /* When an entity is deployed, attach a movement component */
-        const deployed = deploy.deployed;
+        const deployed = event.deployed;
 
         /* TODO: Lookup move cost somehow */
         const moveable = newMoveable(this._id_pool.component(), {
             move_cost: 20
         });
 
-        changer.makeChange(new AttachComponent(deployed, moveable));
+        event.changer.makeChange(new AttachComponent(deployed, moveable));
         return true;
     }
     /**
      * Attempt to move an entity to the given location
      *
      * @param  {GameStateChanger} changer   Game state changer
-     * @param  {GameSystems}      systems   Game systems
+     * @param  {SystemRegistry}   systems   System registry
      * @param  {Entity}           moving    The entity being moved
      * @param  {Vec2}             dest      The destination to move to
      * @return {boolean}                    Whether or not move was successful
      */
-    public move(changer: GameStateChanger, systems: GameSystems,
+    public move(changer: GameStateChanger, systems: SystemRegistry,
                   moving: Entity, dest: Vec2): boolean {
+        const grid_system = systems.lookup(GridSystem);
         const valid_moves = this.getValidMoves(systems, moving);
-        const dest_index = systems.grid.indexOf(dest);
+        const dest_index = grid_system.indexOf(dest);
 
         if (!valid_moves.has(dest_index)) {
             LOG.WARN("Received invalid action!");
             return false;
         }
 
+        const power_system = systems.lookup(PowerSystem);
         const cost = valid_moves.get(dest_index)!;
 
-        systems.power.usePower(changer, moving, cost);
+        power_system.usePower(changer, moving, cost);
         const pos_comp = changer.state.getComponent<HexPosition>(
             moving, ComponentType.HEX_POSITION)!;
 
@@ -76,12 +80,13 @@ export class MovementSystem extends System {
 
         changer.makeChange(new UpdateComponent(new_pos_comp));
 
-        const moveData = {
-            entity: moving,
+        const moveEvent: MoveEvent = {
+            changer: changer,
+            moved: moving,
             from: old_pos
         };
 
-        this._messengers.onMove.publish(moveData, changer);
+        this._observer.emit("move", moveEvent);
         return true;
     }
     /**
@@ -90,12 +95,12 @@ export class MovementSystem extends System {
      * Performs a BFS to find all nodes that are reachable without using more
      * than the entity's current power
      *
-     * @param  {GameSystems}             systems Game systems
+     * @param  {SystemRegistry}          systems SystemRegistry
      * @param  {Entity}                  entity  Entity to get moves for
      * @return {Map<number, number>}             Map of reachable indices to
      *                                           their costs
      */
-    public getValidMoves(systems: GameSystems, entity: Entity):
+    public getValidMoves(systems: SystemRegistry, entity: Entity):
         Map<number, number> {
         /* Compute the maximum power we can use */
         const power_comp = this._state.getComponent<PowerSource>(
@@ -115,6 +120,7 @@ export class MovementSystem extends System {
         }
 
         const frontier = new PriorityQueue<MoveData>(comp);
+        const grid_system = systems.lookup(GridSystem);
         frontier.push({hex: starting_pos, power_used: 0});
 
         let reachable = Map<number, number>();
@@ -125,18 +131,18 @@ export class MovementSystem extends System {
             /* The cheapest move uses more power than we have, we're done. */
             if (next.power_used > max_power) break;
 
-            reachable = reachable.set(systems.grid.indexOf(next.hex),
+            reachable = reachable.set(grid_system.indexOf(next.hex),
                                       next.power_used);
 
             const cost_to_move = this.moveCostInHex(systems, entity, next.hex);
-            const neighbors = systems.grid.neighbors(next.hex);
+            const neighbors = grid_system.neighbors(next.hex);
 
             for (const n of neighbors) {
                 /* Only push if we haven't already reached it */
-                if (reachable.has(systems.grid.indexOf(n))) continue;
+                if (reachable.has(grid_system.indexOf(n))) continue;
 
                 /* Can only move into free hexes */
-                if (systems.grid.occupancyStatus(n) != "free") continue;
+                if (grid_system.occupancyStatus(n) != "free") continue;
 
                 frontier.push({
                     hex: n, power_used:
@@ -153,12 +159,12 @@ export class MovementSystem extends System {
      * areas, which is the main point of making this function rather than just
      * checking move_cost.
      *
-     * @param  {GameSystems} systems Game systems
-     * @param  {Entity}      entity  The entity being moved
-     * @param  {Vec2}        zone    The hex we're in
-     * @return {number}             Move cost in this hex
+     * @param  {SystemRegistry} systems SystemRegistry
+     * @param  {Entity}         entity  The entity being moved
+     * @param  {Vec2}           zone    The hex we're in
+     * @return {number}                 Move cost in this hex
      */
-    private moveCostInHex(systems: GameSystems, entity: Entity, hex: Vec2):
+    private moveCostInHex(systems: SystemRegistry, entity: Entity, hex: Vec2):
         number {
         const moveable =
             this._state.getComponent<Moveable>(entity, ComponentType.MOVEABLE)!;

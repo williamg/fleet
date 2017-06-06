@@ -4,7 +4,6 @@
  * The UIState for when the player is moving a ship to a new position
  */
 import { GameUIState, UIStateEvent } from "./GameUIState"
-import { ClientGameSystems } from "./GameScene"
 import { NotMyTurnUIState } from "./NotMyTurnUIState"
 import { MyTurnUIState } from "./MyTurnUIState"
 import { GameView, CancelPos, HexStyle } from "./GameView"
@@ -14,11 +13,15 @@ import { ComponentType } from "../../../game/Component"
 import { Entity } from "../../../game/Entity"
 import { GameState } from "../../../game/GameState"
 import { Vec2 } from "../../../game/Math"
+import { SystemRegistry } from "../../../game/System"
 import { Observer } from "../../../game/util"
 
 import { TeamID } from "../../../game/components/Team"
 import { HexPosition } from "../../../game/components/HexPosition"
 import { Moveable } from "../../../game/components/Moveable"
+
+import { MovementSystem } from "../../../game/systems/MovementSystem"
+import { GridSystem } from "../../../game/systems/GridSystem"
 
 import { Map, List } from "immutable"
 
@@ -35,10 +38,10 @@ export class MoveUIState extends Observer<UIStateEvent> implements GameUIState {
      */
     private readonly _view: GameView;
     /**
-     * Systems
-     * @type {ClientGameSystems}
+     * System registry
+     * @type {SystemRegistry}
      */
-    private readonly _systems: ClientGameSystems;
+    private readonly _systems: SystemRegistry;
     /**
      * Friendly team
      * @type {TeamID}
@@ -68,7 +71,7 @@ export class MoveUIState extends Observer<UIStateEvent> implements GameUIState {
     private readonly _onEndTurn = this.onEndTurn.bind(this);
     private readonly _onHexSelected = this.onHexSelected.bind(this);
 
-    constructor(view: GameView, systems: ClientGameSystems, friendly: TeamID,
+    constructor(view: GameView, systems: SystemRegistry, friendly: TeamID,
                 game_state: GameState, moving: Entity) {
         super();
 
@@ -93,8 +96,11 @@ export class MoveUIState extends Observer<UIStateEvent> implements GameUIState {
             this.emit("change state", uistate);
         }
 
+        const movement_system = this._systems.lookup(MovementSystem);
+        const grid_system = this._systems.lookup(GridSystem);
+
         /* Cache targets */
-        const cost_map = this._systems.movement.getValidMoves(
+        const cost_map = movement_system.getValidMoves(
             this._systems, this._moving);
         const locations = [];
 
@@ -102,7 +108,7 @@ export class MoveUIState extends Observer<UIStateEvent> implements GameUIState {
             locations.push({
                 index: index,
                 cost: cost,
-                pos: this._systems.grid.index_map.get(index)!
+                pos: grid_system.index_map.get(index)!
             });
         }
 

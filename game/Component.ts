@@ -15,7 +15,7 @@ export enum ComponentType {
     DEPLOYABLE,
     DEPLOY_ZONE,
     POWER_SOURCE,
-    MOVEABLE
+    MOVEABLE,
 };
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of

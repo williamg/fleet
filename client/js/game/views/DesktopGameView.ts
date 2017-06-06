@@ -7,7 +7,6 @@ import { HangerWindow } from "./HangerWindow"
 import { TargetWindow } from "./TargetWindow"
 
 import { GameInteractionEvent, HexStyle, CancelPos } from "../GameView"
-import { ClientGameSystems } from "../GameScene"
 
 import { UserInterface } from "../../UserInterface"
 
@@ -15,6 +14,7 @@ import { GameState } from "../../../../game/GameState"
 import { Vec2 } from "../../../../game/Math"
 import { Observer } from "../../../../game/util"
 import { Entity } from "../../../../game/Entity"
+import { SystemRegistry } from "../../../../game/System"
 
 import { TeamID } from "../../../../game/components/Team"
 
@@ -27,10 +27,10 @@ export class DesktopGameView extends Observer<GameInteractionEvent> {
      */
     private readonly _ui: UserInterface;
     /**
-     * Game systems
-     * @type {ClientGameSystems}
+     * Game systems registry
+     * @type {SystemRegistry}
      */
-    private readonly _systems: ClientGameSystems;
+    private readonly _systems: SystemRegistry;
     /**
      * Friendly team
      * @type {TeamID}
@@ -57,7 +57,7 @@ export class DesktopGameView extends Observer<GameInteractionEvent> {
      */
     private _game_state: GameState;
 
-    constructor (ui: UserInterface, systems: ClientGameSystems,
+    constructor (ui: UserInterface, systems: SystemRegistry,
                  friendly: TeamID, state: GameState) {
         super();
 

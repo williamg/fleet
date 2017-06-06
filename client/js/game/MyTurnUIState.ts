@@ -6,7 +6,6 @@
  * as ending the user's turn.
  */
 import { GameUIState, UIStateEvent } from "./GameUIState"
-import { ClientGameSystems } from "./GameScene"
 import { NotMyTurnUIState } from "./NotMyTurnUIState"
 import { DeployUIState } from "./DeployUIState"
 import { MoveUIState } from "./MoveUIState"
@@ -15,9 +14,12 @@ import { GameView, HexStyle } from "./GameView"
 import { GameState } from "../../../game/GameState"
 import { Entity } from "../../../game/Entity"
 import { Vec2 } from "../../../game/Math"
+import { SystemRegistry } from "../../../game/System"
 import { Observer } from "../../../game/util"
 
 import { TeamID } from "../../../game/components/Team"
+
+import { GridSystem } from "../../../game/systems/GridSystem"
 
 export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState {
     /**
@@ -26,10 +28,10 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
      */
     private readonly _view: GameView;
     /**
-     * Systems
-     * @type {ClientGameSystems}
+     * System registry
+     * @type {SystemRegistry}
      */
-    private readonly _systems: ClientGameSystems;
+    private readonly _systems: SystemRegistry;
     /**
      * Friendly team
      * @type {TeamID}
@@ -50,7 +52,7 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
     private readonly _onItem = this.onItem.bind(this);
     private readonly _onMove = this.onMove.bind(this);
 
-    constructor(view: GameView, systems: ClientGameSystems, friendly: TeamID,
+    constructor(view: GameView, systems: SystemRegistry, friendly: TeamID,
                 game_state: GameState) {
         super();
 
@@ -112,7 +114,8 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
         this._view.showEntityInfo(entity);
     }
     private onHexSelected(hex: Vec2): void {
-        const status = this._systems.grid.occupancyStatus(hex);
+        const grid_system = this._systems.lookup(GridSystem);
+        const status = grid_system.occupancyStatus(hex);
 
         if (status != "free" && status != "unknown") {
             this._view.showEntityInfo(status);

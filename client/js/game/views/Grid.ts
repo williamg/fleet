@@ -4,7 +4,6 @@
  */
 
 import { GameInteractionEvent, HexStyle } from "../GameView"
-import { ClientGameSystems } from "../GameScene"
 
 import { Style } from "../../UI"
 
@@ -13,6 +12,8 @@ import { Observer, LOG, ASSERT } from "../../../../game/util"
 import { Entity } from "../../../../game/Entity"
 import { ComponentType } from "../../../../game/Component"
 import { GameState } from "../../../../game/GameState"
+import { SystemRegistry } from "../../../../game/System"
+
 import { GridSystem } from "../../../../game/systems/GridSystem"
 
 import { HexPosition } from "../../../../game/components/HexPosition"
@@ -96,17 +97,17 @@ function implForStyle(style: HexStyle): HexStyleImpl {
 }
 
 export class Grid extends PIXI.Container {
-    private readonly _systems: ClientGameSystems;
+    private readonly _grid_system: GridSystem;
     private readonly _friendly: TeamID;
     private readonly _graphics: PIXI.Graphics;
     private readonly _observer: Observer<GameInteractionEvent>;
     private _styles: Map<number, HexStyleImpl>
 
-    constructor(systems: ClientGameSystems,
+    constructor(systems: SystemRegistry,
                 observer: Observer<GameInteractionEvent>, friendly: TeamID) {
         super()
 
-        this._systems = systems;
+        this._grid_system = systems.lookup(GridSystem);
         this._observer = observer;
         this._friendly = friendly;
         this._graphics = new PIXI.Graphics();
@@ -124,8 +125,8 @@ export class Grid extends PIXI.Container {
     public render(delta: number, state: GameState): void {
         this._graphics.clear();
 
-        for (const [i, status] of this._systems.grid.grid) {
-            const loc = this._systems.grid.index_map.get(i)!;
+        for (const [i, status] of this._grid_system.grid) {
+            const loc = this._grid_system.index_map.get(i)!;
             this.drawHex(loc);
 
             if (status != "free" && status != "unknown") {
@@ -136,14 +137,15 @@ export class Grid extends PIXI.Container {
     }
     public clearHexStyles(): void {
         const normal = implForStyle(HexStyle.NORMAL)
-        for(let i = 0; i < this._systems.grid.index_map.size; ++i) {
+
+        for(let i = 0; i < this._grid_system.index_map.size; ++i) {
             this._styles = this._styles.set(i, normal);
         }
     }
 
     public setHexStyle(hex: Vec2, style: HexStyle): void {
         const index =
-            this._systems.grid.index_map.findIndex(hex.equals.bind(hex));
+            this._grid_system.index_map.findIndex(hex.equals.bind(hex));
 
         ASSERT(index >= 0);
 
@@ -152,7 +154,7 @@ export class Grid extends PIXI.Container {
 
     private drawHex(hex: Vec2) {
         const index =
-            this._systems.grid.index_map.findIndex(hex.equals.bind(hex));
+            this._grid_system.index_map.findIndex(hex.equals.bind(hex));
 
         ASSERT(index >= 0);
 
@@ -210,7 +212,7 @@ export class Grid extends PIXI.Container {
     private handleMouseMove(mouse: PIXI.interaction.InteractionEvent): void {
         const hex = this.hexFromEvent(mouse);
 
-        if (this._systems.grid.inBounds(hex)) {
+        if (this._grid_system.inBounds(hex)) {
             /* Handle hex hover */
         }
     }
@@ -218,7 +220,7 @@ export class Grid extends PIXI.Container {
     private handleClick(mouse: PIXI.interaction.InteractionEvent): void {
         const hex = this.hexFromEvent(mouse);
 
-        if (this._systems.grid.inBounds(hex)) {
+        if (this._grid_system.inBounds(hex)) {
             this._observer.emit("hex click", hex);
         }
     }

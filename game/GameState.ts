@@ -5,9 +5,8 @@ import { Change, ChangeType, StartGame, CreateEntity, DestroyEntity,
     UpdateComponent, DetachComponent, AttachComponent, EndTurn
     } from "./Changes"
 import { Component, ComponentType, ComponentID } from "./Component"
-import { GameSystems } from "./GameSystems"
 import { Entity } from "./Entity"
-import { System } from "./System"
+import { System, SystemRegistry } from "./System"
 import { ASSERT, LOG } from "./util"
 import { TeamID, Team } from "./components/Team"
 import { Map, Record, Set, List } from "immutable"
@@ -136,12 +135,12 @@ export class GameState extends GameStateRecord {
 export class GameStateChanger {
     private _state: GameState;
     private _changeset: List<Change>;
-    private readonly _systems_arr: System[];
+    private readonly _systems: SystemRegistry;
 
-    constructor(state: GameState, systems: System[]) {
+    constructor(state: GameState, systems: SystemRegistry) {
         this._state = state;
         this._changeset = List<Change>();
-        this._systems_arr = systems;
+        this._systems = systems;
     }
 
     /* Define getter, but no setter */
@@ -162,27 +161,18 @@ export class GameStateChanger {
         switch (change.type) {
             case ChangeType.CREATE_ENT: {
                 const entity = (change as CreateEntity).entity;
-
-                for (const system of this._systems_arr) {
-                    system.entityCreated(entity, this._state);
-                }
+                this._systems.entityCreated(entity, this._state);
                 return;
             }
             case ChangeType.DESTROY_ENT: {
                 const entity = (change as DestroyEntity).entity;
-
-                for (const system of this._systems_arr) {
-                    system.entityDestroyed(entity, this._state);
-                }
+                this._systems.entityDestroyed(entity, this._state);
                 return;
             }
             case ChangeType.DETACH_COMP: {
                 const entity = (change as DetachComponent).entity;
                 const comp = (change as DetachComponent).component;
-
-                for (const system of this._systems_arr) {
-                    system.componentDetached(entity, comp, this._state);
-                }
+                this._systems.componentDetached(entity, comp, this._state);
                 return;
             }
             case ChangeType.UPDATE_COMP: {
@@ -190,19 +180,13 @@ export class GameStateChanger {
                 const entity = this._state.entities.findKey((ids) => {
                     return ids.contains(comp.id);
                 })!;
-
-                for (const system of this._systems_arr) {
-                    system.componentUpdated(entity, comp, this._state);
-                }
+                this._systems.componentUpdated(entity, comp, this._state);
                 return;
             }
             case ChangeType.ATTACH_COMP: {
                 const entity = (change as AttachComponent).entity;
                 const comp = (change as AttachComponent).component;
-
-                for (const system of this._systems_arr) {
-                    system.componentAttached(entity, comp, this._state);
-                }
+                this._systems.componentAttached(entity, comp, this._state);
                 return;
             }
             case ChangeType.END_TURN: {
