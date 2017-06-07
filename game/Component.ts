@@ -17,7 +17,8 @@ export enum ComponentType {
     POWER_SOURCE,
     MOVEABLE,
     ITEMS,
-    HEALTH
+    HEALTH,
+        PILOT
 };
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of

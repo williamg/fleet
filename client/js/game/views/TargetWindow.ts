@@ -17,6 +17,7 @@ import { TeamID } from "../../../../game/components/Team"
 import { Name } from "../../../../game/components/Name"
 import { ItemsData, Item, Items } from "../../../../game/components/Items"
 import { Health } from "../../../../game/components/Health"
+import { Pilot } from "../../../../game/components/Pilot"
 
 import { ItemSystem } from "../../../../game/systems/ItemSystem"
 
@@ -29,13 +30,13 @@ const RESOURCE_WIDTH = 220;
 const HEALTH = new Vec2(0, 25);
 const BATTERY = new Vec2(0, 45);
 const RECHARGE = new Vec2(0, 70);
-const MOVE_COST = new Vec2(80, 70);
+const MOVE_COST = new Vec2(90, 70);
 
 const PILOT = new Vec2(20, 120);
 const PILOT_NAME = new Vec2(0, 0);
 const ACCURACY = new Vec2(0, 25);
-const PRECISION = new Vec2(100, 25);
-const EVASION = new Vec2(200, 25);
+const PRECISION = new Vec2(90, 25);
+const EVASION = new Vec2(180, 25);
 
 const LOADOUT = new Vec2(20, 180);
 const LOADOUT_LABEL = new Vec2(0, 0);
@@ -249,7 +250,7 @@ export class TargetWindow extends PIXI.Container {
         this.displayHealth(this._targeted);
         this.displayPower(this._targeted);
         this.displayMovement(this._targeted);
-        //this.displayPilot(this._targeted);
+        this.displayPilot(this._targeted);
 
         let i = 0;
         const items = this._game_state.getComponent<Items>(
@@ -458,26 +459,25 @@ export class TargetWindow extends PIXI.Container {
      *
      * @param entity Entity to display
      */
-/*    private displayPilot(entity: Entity): void {
-        const pilot = entity.getComponent(Pilot);
+    private displayPilot(entity: Entity): void {
+        const pilot_comp = this._game_state.getComponent<Pilot>(
+            entity, ComponentType.PILOT);
 
-        if (pilot)
-        {
+        if (pilot_comp) {
+            const pilot = pilot_comp.data;
             this.pilot_name.label.text = pilot.name;
-            this.precision.label.text = pilot.precision.value().toString();
-            this.accuracy.label.text = pilot.accuracy.value().toString();
-            this.evasion.label.text = pilot.evasion.value().toString();
+            this.precision.label.text = pilot.precision.toString();
+            this.accuracy.label.text = pilot.accuracy.toString();
+            this.evasion.label.text = pilot.evasion.toString();
             this.pilot.alpha = 1.0;
-        }
-        else
-        {
+        } else {
             this.pilot_name.label.text = "Unmanned";
-            this.precision.label.text = "--";
-            this.accuracy.label.text = "--";
-            this.evasion.label.text = "--";
+            this.precision.label.text = "---";
+            this.accuracy.label.text = "---";
+            this.evasion.label.text = "---";
             this.pilot.alpha = 0.2;
         }
-    }*/
+    }
 
     private displayItem(entity: Entity, item: Item, index: number): void {
         const item_system = this._systems.lookup(ItemSystem);

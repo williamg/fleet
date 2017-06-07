@@ -25,6 +25,7 @@ import { PowerSource, PowerType, newPowerSource }
     from "../game/components/PowerSource"
 import { newItems, Items } from "../game/components/Items"
 import { newHealth, Health } from "../game/components/Health"
+import { newPilot, Pilot } from "../game/components/Pilot"
 
 import { List } from "immutable"
 
@@ -84,6 +85,12 @@ export class WebPlayer extends Player {
                 capacity: max_health,
                 current: max_health
             });
+            const pilot = newPilot(pool.component(), {
+                name: "Pilot " + i.toString(),
+                accuracy: 2,
+                precision: 3,
+                evasion: 4
+            });
 
             state.makeChange(new AttachComponent(ent, name));
             state.makeChange(new AttachComponent(ent, deployable));
@@ -91,6 +98,7 @@ export class WebPlayer extends Player {
             state.makeChange(new AttachComponent(ent, power));
             state.makeChange(new AttachComponent(ent, items));
             state.makeChange(new AttachComponent(ent, health));
+            state.makeChange(new AttachComponent(ent, pilot));
         }
     }
     /**
