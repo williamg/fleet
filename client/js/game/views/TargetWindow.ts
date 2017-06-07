@@ -16,6 +16,7 @@ import { PowerSource, PowerType } from "../../../../game/components/PowerSource"
 import { TeamID } from "../../../../game/components/Team"
 import { Name } from "../../../../game/components/Name"
 import { ItemsData, Item, Items } from "../../../../game/components/Items"
+import { Health } from "../../../../game/components/Health"
 
 import { ItemSystem } from "../../../../game/systems/ItemSystem"
 
@@ -334,9 +335,19 @@ export class TargetWindow extends PIXI.Container {
      * @param entity Entity to display
      */
     private displayHealth(entity: Entity): void {
-        this.health.setColor(Style.colors.white.num);
-        this.health.setValues(0, 100);
-        this.health.alpha = 0.2;
+        const health_comp = this._game_state.getComponent<Health>(
+            entity, ComponentType.HEALTH);
+
+        if (health_comp) {
+            this.health.setColor(Style.colors.green.num);
+            this.health.setValues(health_comp.data.current,
+                                  health_comp.data.capacity);
+            this.health.alpha = 1.0;
+        } else {
+            this.health.setColor(Style.colors.white.num);
+            this.health.setValues(0, 100);
+            this.health.alpha = 0.2;
+        }
     }
     /**
      * Display power info of entity

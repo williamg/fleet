@@ -62,9 +62,7 @@ export class ItemSystem extends System {
      * At the end of the turn, reduce cooldowns where appropriate
      */
     public processTurnEnd(state: GameStateChanger, systems: SystemRegistry) {
-        console.log("turn end");
         for (const entity of this._entities) {
-            console.log("ent");
             const team = state.state.getComponent<Team>(
                 entity, ComponentType.TEAM);
 
