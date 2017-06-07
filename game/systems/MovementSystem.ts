@@ -32,7 +32,7 @@ export class MovementSystem extends System {
     constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
         super(id_pool, observer, state);
 
-        observer.addListener("deploy", (event: DeployEvent) => {
+        observer.general.addListener("deploy", (event: DeployEvent) => {
             return this.onDeploy(event);
         });
     }
@@ -86,7 +86,7 @@ export class MovementSystem extends System {
             from: old_pos
         };
 
-        this._observer.emit("move", moveEvent);
+        this._observer.general.emit("move", moveEvent);
         return true;
     }
     /**

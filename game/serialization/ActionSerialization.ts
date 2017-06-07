@@ -3,7 +3,7 @@
  * Functions for (de)serializing actions
  */
 
-import { Action, ActionType, Move, Deploy } from "../Action"
+import { Action, ActionType, Move, Deploy, UseItem } from "../Action"
 import { Entity } from "../Entity"
 import { Vec2 } from "../Math"
 
@@ -24,6 +24,11 @@ export type DeployJSON = {
     entity: Entity,
     deploy: Entity,
     index: number
+};
+export type UseItemJSON = {
+    entity: Entity,
+    index: number,
+    targets: [number, number][]
 };
 /**
  * Represent the action as a string
@@ -60,6 +65,9 @@ export function actionToJSON(action: Action): ActionJSON {
         case ActionType.DEPLOY:
             data = serializeDeploy(action as Deploy);
             break;
+        case ActionType.USE_ITEM:
+            data = serializeUseItem(action as UseItem);
+            break;
     }
 
     return {
@@ -80,6 +88,8 @@ export function actionFromJSON(action_json: ActionJSON): Action {
             return deserializeMove(action_json.data);
         case ActionType.DEPLOY:
             return deserializeDeploy(action_json.data);
+        case ActionType.USE_ITEM:
+            return deserializeUseItem(action_json.data);
     }
 
     throw new Error("Unexhaustive action deserialization");
@@ -168,4 +178,52 @@ export function deployToJSON(deploy: Deploy): DeployJSON {
 export function deployFromJSON(deploy_json: DeployJSON): Deploy {
     return new Deploy(deploy_json.entity,
                       deploy_json.deploy, deploy_json.index);
+}
+/**
+ * Represent the UseItem as a string
+ *
+ * @param   {UseItem} use UseItem to serialize
+ * @returns {string}      Serialized UseItem
+ */
+export function serializeUseItem(use: UseItem): string {
+    return JSON.stringify(useItemToJSON(use));
+}
+/**
+ * Convert a serialized UseItem into an instance
+ *
+ * @param  {string}  use_str Serialized UseItem
+ * @return {UseItem}         UseItem instance
+ * @throws {Error}           On invalid serialization input
+ */
+export function deserializeUseItem(use_str: string): UseItem {
+    return useItemFromJSON(JSON.parse(use_str));
+}
+/**
+ * Represent UseItem as JSON
+ *
+ * @param   {UseItem}     use UseItem to serialize
+ * @returns {UseItemJSON}     JSON representation of UseItem
+ */
+export function useItemToJSON(use: UseItem): UseItemJSON {
+    return {
+        entity: use.entity,
+        index: use.index,
+        targets: use.targets.map((v: Vec2) => { 
+            return [v.x, v.y] as [number, number];
+        })
+    };
+}
+/**
+ * Convert a JSONified UseItem into an instance
+ *
+ * @param  {string}  use_json JSONified UseItem
+ * @return {UseItem}          UseItem instance
+ * @throws {Error}            On invalid serialization input
+ */
+export function useItemFromJSON(use_json: UseItemJSON): UseItem {
+    const vecs = use_json.targets.map((pair: [number, number]) => {
+        const [x, y] = pair;
+        return new Vec2(x, y);
+    });
+    return new UseItem(use_json.entity, use_json.index, vecs);
 }

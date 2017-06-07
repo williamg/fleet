@@ -11,13 +11,16 @@ import { DeployUIState } from "./DeployUIState"
 import { MoveUIState } from "./MoveUIState"
 import { GameView, HexStyle } from "./GameView"
 
+import { UseItem } from "../../../game/Action"
 import { GameState } from "../../../game/GameState"
+import { ComponentType } from "../../../game/Component"
 import { Entity } from "../../../game/Entity"
 import { Vec2 } from "../../../game/Math"
 import { SystemRegistry } from "../../../game/System"
 import { Observer } from "../../../game/util"
 
 import { TeamID } from "../../../game/components/Team"
+import { Items } from "../../../game/components/Items"
 
 import { GridSystem } from "../../../game/systems/GridSystem"
 
@@ -123,7 +126,29 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
             this._view.setHexStyle(hex, HexStyle.SELECTED);
         }
     }
-    private onItem(): void {
+    private onItem(item_data: { entity: Entity, index:  number}): void {
+        /* Only transition to targeting state if the item requires targets */
+        const items = this._game_state.getComponent<Items>(
+            item_data.entity, ComponentType.ITEMS);
+
+        if (items == undefined) {
+            return;
+        }
+
+        if (items.data.items.length <= item_data.index) {
+            return;
+        }
+
+        if (items.data.items[item_data.index].targets.length == 0) {
+            /* No targets required, emit action */
+            const useItem = new UseItem(item_data.entity, item_data.index, []);
+            this.emit("action", useItem);
+            return;
+        }
+
+        /* Transition into targeting state */
+        throw new Error("UNIMPLEMENTTED");
+
     }
     private onMove(entity: Entity): void {
         const move =

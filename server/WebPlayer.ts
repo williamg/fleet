@@ -20,9 +20,10 @@ import { Change, CreateEntity, AttachComponent } from "../game/Changes"
 
 import { Deployable, newDeployable } from "../game/components/Deployable"
 import { Name, newName } from "../game/components/Name"
-import { Team, TeamID, newTeam } from "../game/components/Team"
+import { Team, TeamID, newTeam, otherTeam } from "../game/components/Team"
 import { PowerSource, PowerType, newPowerSource }
     from "../game/components/PowerSource"
+import { newItems, Items } from "../game/components/Items"
 
 import { List } from "immutable"
 
@@ -62,11 +63,27 @@ export class WebPlayer extends Player {
                 current: max,
                 recharge: 10 + Math.floor(15 * Math.random()),
             });
+            const items = newItems(pool.component(), {
+                items: [{
+                    name: "Shockwave",
+                    description: "Deals light damage to all adjacent enemies",
+                    cooldown: {
+                        value: 2,
+                        active: false,
+                        remaining: 0,
+                        wait_for: undefined
+                    },
+                    cost: 15,
+                    event: "shockwave",
+                    targets: []
+                }]
+            });
 
             state.makeChange(new AttachComponent(ent, name));
             state.makeChange(new AttachComponent(ent, deployable));
             state.makeChange(new AttachComponent(ent, team));
             state.makeChange(new AttachComponent(ent, power));
+            state.makeChange(new AttachComponent(ent, items));
         }
     }
     /**

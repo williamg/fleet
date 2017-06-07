@@ -10,7 +10,7 @@ import { DeployableData } from "../components/Deployable"
 import { DeployZoneData } from "../components/DeployZone"
 import { PowerSourceData } from "../components/PowerSource"
 import { MoveableData } from "../components/Moveable"
-import { ItemData } from "../components/Items"
+import { ItemsData } from "../components/Items"
 import { ASSERT } from "../util"
 
 /**
@@ -77,6 +77,9 @@ export function componentToJSON(comp: Component): ComponentJSON {
         case ComponentType.MOVEABLE:
             data = serializeComponentImpl(comp as ComponentImpl<MoveableData>);
             break;
+        case ComponentType.ITEMS:
+            data = serializeComponentImpl(comp as ComponentImpl<ItemsData>);
+            break;
         default:
             ASSERT(false);
     }
@@ -110,6 +113,8 @@ export function componentFromJSON(comp_json: ComponentJSON): Component {
             return deserializeComponentImpl<PowerSourceData>(comp_json.data);
         case ComponentType.MOVEABLE:
             return deserializeComponentImpl<MoveableData>(comp_json.data);
+        case ComponentType.ITEMS:
+            return deserializeComponentImpl<ItemsData>(comp_json.data);
     }
 
     throw new Error("Unexhaustive component deserialization");

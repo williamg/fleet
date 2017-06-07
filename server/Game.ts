@@ -16,6 +16,7 @@ import { GridSystem } from "../game/systems/GridSystem"
 import { DeploySystem } from "../game/systems/DeploySystem"
 import { PowerSystem } from "../game/systems/PowerSystem"
 import { MovementSystem } from "../game/systems/MovementSystem"
+import { ItemSystem } from "../game/systems/ItemSystem"
 
 import { newTeam, Team, TeamID } from "../game/components/Team"
 import { newHexPosition } from "../game/components/HexPosition"
@@ -94,6 +95,7 @@ export class Game {
         this._systems.register(GridSystem);
         this._systems.register(MovementSystem);
         this._systems.register(PowerSystem);
+        this._systems.register(ItemSystem);
 
         /* Initialize entities */
         const changer = new GameStateChanger(this._state, this._systems);

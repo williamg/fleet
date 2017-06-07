@@ -14,8 +14,8 @@ import { Observer } from "./util"
 
 import { Map } from "immutable"
 
-export type SystemEvent = "deploy" | "move"
-export type SystemObserver = Observer<SystemEvent>;
+type SystemEvent = "move" | "deploy"
+
 export type DeployEvent = {
     changer: GameStateChanger,
     deployed: Entity,
@@ -27,6 +27,24 @@ export type MoveEvent = {
     moved: Entity,
     from: Vec2
 };
+
+type ItemEventData = {
+    changer: GameStateChanger
+    entity: Entity,
+    index: number,
+    systems: SystemRegistry,
+    targets: Vec2[],
+};
+
+export class SystemObserver {
+    public readonly general: Observer<SystemEvent>;
+    public readonly items: Observer<string, ItemEventData>;
+
+    constructor() {
+        this.general = new Observer<SystemEvent>();
+        this.items = new Observer<string, ItemEventData>();
+    }
+}
 
 type SystemCtor<T> = new (id_pool: IDPool, observer: SystemObserver,
                           state: GameState) => T;
@@ -42,7 +60,7 @@ export class SystemRegistry {
 
     constructor(id_pool: IDPool, state: GameState) {
         this._id_pool = id_pool;
-        this._observer = new Observer<SystemEvent>();
+        this._observer = new SystemObserver();
         this._state = state;
         this._systems = Map<SystemCtor<System>, System>();
     }
@@ -135,7 +153,7 @@ export class SystemRegistry {
     public componentUpdated(entity: Entity, comp: Component, state: GameState):
         void {
         for (const system of this._systems.values()) {
-            system.componentAttached(entity, comp, state);
+            system.componentUpdated(entity, comp, state);
         }
     }
     /**

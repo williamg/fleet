@@ -104,7 +104,7 @@ export class DeploySystem extends System {
             index: index
         };
 
-        this._observer.emit("deploy", deployEvent);
+        this._observer.general.emit("deploy", deployEvent);
         return true;
     }
     /**

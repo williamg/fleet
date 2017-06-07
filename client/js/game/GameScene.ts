@@ -33,6 +33,7 @@ import { GridSystem } from "../../../game/systems/GridSystem"
 import { HangerSystem } from "../../../game/systems/HangerSystem"
 import { PowerSystem } from "../../../game/systems/PowerSystem"
 import { MovementSystem } from "../../../game/systems/MovementSystem"
+import { ItemSystem } from "../../../game/systems/ItemSystem"
 
 import { List } from "immutable"
 import * as PIXI from "pixi.js"
@@ -93,6 +94,7 @@ export class GameScene extends Scene {
         this._systems.register(HangerSystem);
         this._systems.register(PowerSystem);
         this._systems.register(MovementSystem);
+        this._systems.register(ItemSystem);
 
         this._view = new DesktopGameView(ui, this._systems, friendly,
                                          this._game_state);

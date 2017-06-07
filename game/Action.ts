@@ -15,6 +15,7 @@ import { Deployable } from "./components/Deployable"
 
 import { MovementSystem } from "./systems/MovementSystem"
 import { DeploySystem } from "./systems/DeploySystem"
+import { ItemSystem } from "./systems/ItemSystem"
 
 /**
  * Type of action
@@ -22,6 +23,7 @@ import { DeploySystem } from "./systems/DeploySystem"
 export enum ActionType {
     MOVE,
     DEPLOY,
+    USE_ITEM
 };
 /*
  * Actions are the primary interface betwene player and game. Each player's turn
@@ -104,6 +106,40 @@ export class Deploy extends Action {
         const deploy_system = systems.lookup(DeploySystem);
         deploy_system.deploy(changer, systems, this.entity, this.deploy_entity,
                              this.target_index);
+    }
+}
+/**
+ * Use an item on a ship
+ */
+export class UseItem extends Action {
+    /**
+     * Entity with item being used
+     * @type {Entity}
+     */
+    public readonly entity: Entity;
+    /**
+     * Index of item being used
+     * @type {number}
+     */
+    public readonly index: number;
+    /**
+     * Targets array
+     * @type {Vec2[]}
+     */
+    public readonly targets: Vec2[]
+
+    constructor(entity: Entity, index: number, targets: Vec2[]) {
+        super(ActionType.USE_ITEM);
+
+        this.entity = entity;
+        this.index = index;
+        this.targets = targets;
+    }
+
+    public execute(changer: GameStateChanger, systems: SystemRegistry): void {
+        const item_system = systems.lookup(ItemSystem);
+        item_system.useItem(changer, systems, this.entity, this.index,
+                             this.targets);
     }
 }
 
