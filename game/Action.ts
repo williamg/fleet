@@ -71,7 +71,7 @@ export class Move extends Action {
 
     public execute(changer: GameStateChanger, systems: SystemRegistry): void {
         const move_system = systems.lookup(MovementSystem);
-        move_system.move(changer, systems, this.entity, this.dest);
+        move_system.move(changer, this.entity, this.dest);
     }
 }
 /**
@@ -104,7 +104,7 @@ export class Deploy extends Action {
 
     public execute(changer: GameStateChanger, systems: SystemRegistry): void {
         const deploy_system = systems.lookup(DeploySystem);
-        deploy_system.deploy(changer, systems, this.entity, this.deploy_entity,
+        deploy_system.deploy(changer, this.entity, this.deploy_entity,
                              this.target_index);
     }
 }
@@ -138,8 +138,7 @@ export class UseItem extends Action {
 
     public execute(changer: GameStateChanger, systems: SystemRegistry): void {
         const item_system = systems.lookup(ItemSystem);
-        item_system.useItem(changer, systems, this.entity, this.index,
-                             this.targets);
+        item_system.useItem(changer, this.entity, this.index, this.targets);
     }
 }
 

@@ -7,7 +7,7 @@ import { Component, ComponentID, ComponentType } from "../Component"
 import { Entity } from "../Entity"
 import { IDPool } from "../IDPool"
 import { GameState, GameStateChanger } from "../GameState"
-import { System, SystemObserver } from "../System"
+import { System, SystemObserver, SystemRegistry } from "../System"
 import { Vec2 } from "../Math"
 import { HexPosition } from "../components/HexPosition"
 import { ASSERT, LOG } from "../util"
@@ -55,12 +55,14 @@ export class GridSystem extends System {
     /**
      * Initialize the grid with the provided cells
      *
-     * @param {IDPool}             id_pool    ID Pool
-     * @param {SystemObserver}     observer   System observer
-     * @param {GameState}          state      GameState
+     * @param {IDPool}         id_pool    ID Pool
+     * @param {SystemObserver} observer   System observer
+     * @param {SystemRegistry} systems    System registry
+     * @param {GameState}      state      GameState
      */
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
-        super(id_pool, observer, state);
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
+        super(id_pool, observer, systems, state);
 
         /* Initialize empty grid */
         this._index_map = List<Vec2>(MAP.map(([x, y]) => {

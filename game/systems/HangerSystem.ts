@@ -2,7 +2,7 @@
  * @file game/HangerSystem.ts
  * Keeps track of the entities in each player's hanger
  */
-import { System, SystemObserver } from "../System"
+import { System, SystemObserver, SystemRegistry } from "../System"
 import { IDPool } from "../IDPool"
 import { Entity } from "../Entity"
 import { Component, ComponentType } from "../Component"
@@ -19,8 +19,9 @@ export class HangerSystem extends System {
      */
     private _entities: List<Entity> = List<Entity>();
 
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
-        super(id_pool, observer, state);
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
+        super(id_pool, observer, systems, state);
     }
     /**
      * Entity getter

@@ -7,4 +7,4 @@ Server:
 - Implement some kind of "testing" mode
 
 Game:
-- Refactor SystemRegistry so that it passes itself to constructors
+- Effects

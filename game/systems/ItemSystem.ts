@@ -31,8 +31,9 @@ export class ItemSystem extends System {
      */
     private _entities: List<Entity> = List<Entity>();
 
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
-        super(id_pool, observer, state);
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
+        super(id_pool, observer, systems, state);
     }
     /**
      * Handle a Items component being attached to an entity
@@ -61,7 +62,7 @@ export class ItemSystem extends System {
     /**
      * At the end of the turn, reduce cooldowns where appropriate
      */
-    public processTurnEnd(state: GameStateChanger, systems: SystemRegistry) {
+    public processTurnEnd(state: GameStateChanger) {
         for (const entity of this._entities) {
             const team = state.state.getComponent<Team>(
                 entity, ComponentType.TEAM);
@@ -90,11 +91,9 @@ export class ItemSystem extends System {
      *
      * @param  {Entity}         entity Entity to check
      * @param  {number}         index  Index of item to check
-     * @param  {SystemRegistry}
      * @return {boolean}               Whether or not the entity can use item
      */
-    public itemUsable(entity: Entity, index: number, systems: SystemRegistry):
-        boolean {
+    public itemUsable(entity: Entity, index: number): boolean {
         const items_comp = this._state.getComponent<Items>(
             entity, ComponentType.ITEMS);
 
@@ -112,7 +111,7 @@ export class ItemSystem extends System {
         }
 
         /* Check resource */
-        const power_system = systems.lookup(PowerSystem);
+        const power_system = this._systems.lookup(PowerSystem);
 
         if (!power_system.hasEnough(entity, item.cost)) {
             return false;
@@ -132,15 +131,14 @@ export class ItemSystem extends System {
      * Attempt to use an item on an entity
      *
      * @param  {GameStateChanger} changer Game state changer
-     * @param  {SystemRegistry}   systems System registry
      * @param  {Entity}           entity  Entity using power
      * @param  {number}           index   Index of item to use
      * @param  {Vec2[]}           targets Targets
      * @return {boolean}                  Whether or not the item was used
      */
-    public useItem(changer: GameStateChanger, systems: SystemRegistry,
-                   entity: Entity, index: number, targets: Vec2[]): boolean {
-        if (!this.itemUsable(entity, index, systems)) {
+    public useItem(changer: GameStateChanger, entity: Entity, index: number,
+                   targets: Vec2[]): boolean {
+        if (!this.itemUsable(entity, index)) {
             return false;
         }
         const items_comp = this._state.getComponent<Items>(
@@ -148,7 +146,7 @@ export class ItemSystem extends System {
         const item = items_comp.data.items[index];
 
         /* First, charge for usage */
-        const power_system = systems.lookup(PowerSystem);
+        const power_system = this._systems.lookup(PowerSystem);
         power_system.usePower(changer, entity, item.cost);
 
         /* Then, handle cooldown */
@@ -178,7 +176,6 @@ export class ItemSystem extends System {
             changer: changer,
             entity: entity,
             index: index,
-            systems: systems,
             targets: targets
         });
 

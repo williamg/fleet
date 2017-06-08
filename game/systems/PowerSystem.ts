@@ -22,8 +22,9 @@ export class PowerSystem extends System {
      */
     private _entities: List<Entity> = List<Entity>();
 
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
-        super(id_pool, observer, state);
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
+        super(id_pool, observer, systems, state);
     }
     /**
      * Handle a Deployable component being attached to an entity
@@ -52,7 +53,7 @@ export class PowerSystem extends System {
     /**
      * At the end of the turn, recharge batteries where appropriate
      */
-    public processTurnEnd(state: GameStateChanger, systems: SystemRegistry) {
+    public processTurnEnd(state: GameStateChanger) {
         for (const entity of this._entities) {
             const team = state.state.getComponent<Team>(
                 entity, ComponentType.TEAM);

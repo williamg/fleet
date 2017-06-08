@@ -32,7 +32,6 @@ type ItemEventData = {
     changer: GameStateChanger
     entity: Entity,
     index: number,
-    systems: SystemRegistry,
     targets: Vec2[],
 };
 
@@ -47,7 +46,7 @@ export class SystemObserver {
 }
 
 type SystemCtor<T> = new (id_pool: IDPool, observer: SystemObserver,
-                          state: GameState) => T;
+                          systems: SystemRegistry, state: GameState) => T;
 
 /**
  * Keeps track of all the systems in the game
@@ -71,7 +70,7 @@ export class SystemRegistry {
      */
     public register(ctor: SystemCtor<System>): void {
         const system =
-            new ctor(this._id_pool, this._observer, this._state);
+            new ctor(this._id_pool, this._observer, this, this._state);
         this._systems = this._systems.set(ctor, system);
     }
     /**
@@ -95,7 +94,7 @@ export class SystemRegistry {
      */
     public processTurnEnd(state: GameStateChanger): void {
         for (const system of this._systems.values()) {
-            system.processTurnEnd(state, this);
+            system.processTurnEnd(state);
         }
     }
     /**
@@ -175,11 +174,14 @@ export class SystemRegistry {
 export abstract class System {
     protected readonly _id_pool: IDPool;
     protected readonly _observer: SystemObserver;
+    protected readonly _systems: SystemRegistry;
     protected _state: GameState;
 
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
         this._id_pool = id_pool;
         this._observer = observer;
+        this._systems = systems;
         this._state = state;
     }
     public setState(state: GameState): void {
@@ -188,7 +190,7 @@ export abstract class System {
     /**
      * Called when a turn ends
      */
-    public processTurnEnd(state: GameStateChanger, registry: SystemRegistry): void {
+    public processTurnEnd(state: GameStateChanger): void {
     }
     /**
      * Called whenever an entity gets created

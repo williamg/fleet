@@ -31,10 +31,13 @@ export class DeploySystem extends System {
      * Initialize the system
      *
      * @param {IDPool}         id_pool    ID Pool
+     * @param {SystemObserver} observer   Observer
+     * @param {SystemRegistry} systems    Systems registry
      * @param {GameState}      state      Game state
      */
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
-        super(id_pool, observer, state);
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
+        super(id_pool, observer, systems, state);
 
         this._deploy_zones = Set<Entity>();
     }
@@ -63,20 +66,19 @@ export class DeploySystem extends System {
      * given zone
      *
      * @param  {GameStateChanger} changer   Game state changer
-     * @param  {SystemRegistry}   systems   System registry
      * @param  {Entity}           deploying The entity being deployed
      * @param  {Entity}           zone      The entity providing the destination
      *                                      zone
      * @param  {number}           index     The index within the zone
      * @return {boolean}                    Whether or not deploy was successful
      */
-    public deploy(changer: GameStateChanger, systems: SystemRegistry,
-                  deploying: Entity, zone: Entity, index: number): boolean {
-        if (!this.zoneValidForEntity(systems, deploying, zone)) {
+    public deploy(changer: GameStateChanger, deploying: Entity, zone: Entity,
+                  index: number): boolean {
+        if (!this.zoneValidForEntity(deploying, zone)) {
             return false;
         }
 
-        if (!this.indexValidForZone(systems, zone, index)) {
+        if (!this.indexValidForZone(zone, index)) {
             return false
         }
 
@@ -92,7 +94,7 @@ export class DeploySystem extends System {
             y: zone_pos.data.y + zone_comp.data.targets[index].y,
         });
 
-        const power_system = systems.lookup(PowerSystem);
+        const power_system = this._systems.lookup(PowerSystem);
         power_system.usePower(changer, zone, deployable_comp.data.deploy_cost);
         changer.makeChange(new DetachComponent(deploying, deployable_comp));
         changer.makeChange(new AttachComponent(deploying, pos_comp));
@@ -110,16 +112,15 @@ export class DeploySystem extends System {
     /**
      * Get valid deploy targets and zones for a particular entity
      *
-     * @param  {SystemRegistry}          systems System registry
      * @param  {Entity}                  entity  Entity to get targets for
      * @return {Set<[Entity, number[]]>}         Valid targets and indices
      */
-    public getDeployTargets(systems: SystemRegistry, entity: Entity):
+    public getDeployTargets(entity: Entity):
         Set<[Entity, number[]]> {
         let result = Set<[Entity, number[]]>();
 
         for (const deploy_zone of this._deploy_zones) {
-            if (!this.zoneValidForEntity(systems, entity, deploy_zone)) {
+            if (!this.zoneValidForEntity(entity, deploy_zone)) {
                 continue;
             }
 
@@ -128,7 +129,7 @@ export class DeploySystem extends System {
             const valid_indices = [];
 
             for (let i = 0; i < zone_locs.data.targets.length; ++i) {
-                if (!this.indexValidForZone(systems, deploy_zone, i)) {
+                if (!this.indexValidForZone(deploy_zone, i)) {
                     continue;
                 }
 
@@ -145,13 +146,11 @@ export class DeploySystem extends System {
     /**
      * Determine if a given deploy zone is valid for a given entity
      *
-     * @param  {SystemRegistry} systems System registry
      * @param  {Entity}         entity  The entity being deployed
      * @param  {Entity}         zone    The entity providing a deploy zone
      * @return {boolean}                Whether or not the zone is valid
      */
-    private zoneValidForEntity(systems: SystemRegistry, entity: Entity,
-                               zone: Entity): boolean {
+    private zoneValidForEntity(entity: Entity, zone: Entity): boolean {
         const ent_team =
             this._state.getComponent<Team>(entity, ComponentType.TEAM)!;
         const zone_team =
@@ -166,7 +165,7 @@ export class DeploySystem extends System {
             entity, ComponentType.DEPLOYABLE)!;
 
         /* Zone must have enough power */
-        const power_system = systems.lookup(PowerSystem);
+        const power_system = this._systems.lookup(PowerSystem);
         if (!power_system.hasEnough(zone, deployable.data.deploy_cost)) {
             return false;
         }
@@ -176,20 +175,18 @@ export class DeploySystem extends System {
     /**
      * Determine if a given target index zone is valid for a given zone
      *
-     * @param  {SystemRegistry} systems System registry
      * @param  {Entity}         zone    The entity providing a deploy zone
      * @param  {number}         index   The target index to check
      * @return {boolean}                Whether or not the zone is valid
      */
-    private indexValidForZone(systems: SystemRegistry, zone: Entity,
-                              index: number): boolean {
+    private indexValidForZone(zone: Entity, index: number): boolean {
         const zone_pos = this._state.getComponent<HexPosition>(zone,
             ComponentType.HEX_POSITION)!;
         const zone_locs = this._state.getComponent<DeployZone>(zone,
             ComponentType.DEPLOY_ZONE)!;
         const pos = new Vec2(zone_pos.data.x + zone_locs.data.targets[index].x,
                              zone_pos.data.y + zone_locs.data.targets[index].y);
-        const grid_system = systems.lookup(GridSystem);
+        const grid_system = this._systems.lookup(GridSystem);
 
         if (!grid_system.inBounds(pos)) return false;
         if (grid_system.occupancyStatus(pos) != "free") return false;

@@ -490,7 +490,7 @@ export class TargetWindow extends PIXI.Container {
             });
         });
 
-        if (item_system.itemUsable(entity, index, this._systems)) {
+        if (item_system.itemUsable(entity, index)) {
             this.item_wrappers[index].alpha = 1;
             this.item_buttons[index].interactive = true;
             this.item_buttons[index].texture =
