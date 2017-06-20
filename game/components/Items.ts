@@ -22,7 +22,6 @@ export type Item = {
         wait_for: string | undefined
     },
     cost: number,
-    event: string,
     targets: TargetFilter[],
 }
 

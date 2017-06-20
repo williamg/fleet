@@ -6,7 +6,6 @@
  */
 import { System, SystemObserver, SystemRegistry, ItemEventData }
     from "../../System"
-
 import { IDPool } from "../../IDPool"
 import { GameState, GameStateChanger } from "../../GameState"
 import { Component, ComponentID, ComponentType } from "../../Component"
@@ -14,19 +13,40 @@ import { GridSystem } from "../GridSystem"
 import { Vec2 } from "../../Math"
 import { Entity } from "../../Entity"
 import { CombatSystem } from "../CombatSystem"
+import { items } from "../../GameData"
 
 import { HexPosition } from "../../components/HexPosition"
 import { Team, TeamID } from "../../components/Team"
+import { Item, TargetFilter } from "../../components/Items"
+import { Health } from "../../components/Health"
 
 export class Shockwave extends System {
-    public static readonly EVENT = "shockwave";
-
     constructor(id_pool: IDPool, observer: SystemObserver,
                 systems: SystemRegistry, state: GameState) {
         super(id_pool, observer, systems, state);
 
         /* Subscribe to shockwave event */
-        observer.items.addListener(Shockwave.EVENT, this.handle.bind(this));
+        observer.items.addListener(items.shockwave.name,
+                                   this.handle.bind(this));
+    }
+
+    /**
+     * Create an Item to attach to an entity
+     * @returns Item
+     */
+    public static create(): Item {
+        return {
+            name: items.shockwave.name,
+            description: items.shockwave.description,
+            cooldown: {
+                value: items.shockwave.cooldown,
+                active: false,
+                remaining: 0,
+                wait_for: undefined
+            },
+            cost: items.shockwave.cost,
+            targets: []
+        };
     }
 
     private handle(event: ItemEventData) {
@@ -57,21 +77,21 @@ export class Shockwave extends System {
 
                 const neighbor_team = changer.state.getComponent<Team>(
                     s, ComponentType.TEAM)!;
+                const health = changer.state.getComponent<Health>(
+                    s, ComponentType.HEALTH);
 
-                return neighbor_team.data.team != teamc.data.team;
+                return health != undefined &&
+                       neighbor_team.data.team != teamc.data.team;
             }) as Entity[];
 
         /* Do damage */
         const combat_system = this._systems.lookup(CombatSystem);
 
         for (const n of neighbor_enemies) {
-            const result = combat_system.calculateAttackResult(entity, n);
-
             const damage = {
                 attacker: entity,
                 defender: n,
-                attack_result: result,
-                amount: 10
+                amount: items.shockwave.damage
             };
 
             combat_system.doDamage(damage, changer);

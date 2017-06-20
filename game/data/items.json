@@ -1,0 +1,10 @@
+{
+    "shockwave": {
+        "name": "Shockwave",
+        "description": "Emits a radial blast dealing 10 (15-20) damage to all adjacent enemies",
+        "icon": "",
+        "cost": 10,
+        "cooldown": 1,
+        "damage": 10
+    }
+}

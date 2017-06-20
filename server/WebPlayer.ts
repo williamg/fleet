@@ -67,19 +67,9 @@ export class WebPlayer extends Player {
                 recharge: 10 + Math.floor(15 * Math.random()),
             });
             const items = newItems(pool.component(), {
-                items: [{
-                    name: "Shockwave",
-                    description: "Deals light damage to all adjacent enemies",
-                    cooldown: {
-                        value: 2,
-                        active: false,
-                        remaining: 0,
-                        wait_for: undefined
-                    },
-                    cost: 15,
-                    event: Shockwave.EVENT,
-                    targets: []
-                }]
+                items: [
+                    Shockwave.create(),
+                ]
             });
             const max_health = 50 + Math.floor(50 * Math.random());
             const health = newHealth(pool.component(), {

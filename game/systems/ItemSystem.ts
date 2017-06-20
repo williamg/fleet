@@ -172,7 +172,7 @@ export class ItemSystem extends System {
         changer.makeChange(new UpdateComponent(new_items));
 
         /* Emit event */
-        this._observer.items.emit(item.event, {
+        this._observer.items.emit(item.name, {
             changer: changer,
             entity: entity,
             index: index,
