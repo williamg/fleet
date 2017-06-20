@@ -27,12 +27,14 @@ export class MovementSystem extends System {
      *
      * @param {IDPool}         id_pool  ID Pool
      * @param {SystemObserver} observer System observer
+     * @param {SystemRegistry} systems  System registry
      * @param {GameState}      state    Game state
      */
-    constructor(id_pool: IDPool, observer: SystemObserver, state: GameState) {
-        super(id_pool, observer, state);
+    constructor(id_pool: IDPool, observer: SystemObserver,
+                systems: SystemRegistry, state: GameState) {
+        super(id_pool, observer, systems, state);
 
-        observer.addListener("deploy", (event: DeployEvent) => {
+        observer.general.addListener("deploy", (event: DeployEvent) => {
             return this.onDeploy(event);
         });
     }
@@ -52,15 +54,14 @@ export class MovementSystem extends System {
      * Attempt to move an entity to the given location
      *
      * @param  {GameStateChanger} changer   Game state changer
-     * @param  {SystemRegistry}   systems   System registry
      * @param  {Entity}           moving    The entity being moved
      * @param  {Vec2}             dest      The destination to move to
      * @return {boolean}                    Whether or not move was successful
      */
-    public move(changer: GameStateChanger, systems: SystemRegistry,
-                  moving: Entity, dest: Vec2): boolean {
-        const grid_system = systems.lookup(GridSystem);
-        const valid_moves = this.getValidMoves(systems, moving);
+    public move(changer: GameStateChanger, moving: Entity, dest: Vec2):
+        boolean {
+        const grid_system = this._systems.lookup(GridSystem);
+        const valid_moves = this.getValidMoves(moving);
         const dest_index = grid_system.indexOf(dest);
 
         if (!valid_moves.has(dest_index)) {
@@ -68,7 +69,7 @@ export class MovementSystem extends System {
             return false;
         }
 
-        const power_system = systems.lookup(PowerSystem);
+        const power_system = this._systems.lookup(PowerSystem);
         const cost = valid_moves.get(dest_index)!;
 
         power_system.usePower(changer, moving, cost);
@@ -86,7 +87,7 @@ export class MovementSystem extends System {
             from: old_pos
         };
 
-        this._observer.emit("move", moveEvent);
+        this._observer.general.emit("move", moveEvent);
         return true;
     }
     /**
@@ -95,12 +96,11 @@ export class MovementSystem extends System {
      * Performs a BFS to find all nodes that are reachable without using more
      * than the entity's current power
      *
-     * @param  {SystemRegistry}          systems SystemRegistry
      * @param  {Entity}                  entity  Entity to get moves for
      * @return {Map<number, number>}             Map of reachable indices to
      *                                           their costs
      */
-    public getValidMoves(systems: SystemRegistry, entity: Entity):
+    public getValidMoves(entity: Entity):
         Map<number, number> {
         /* Compute the maximum power we can use */
         const power_comp = this._state.getComponent<PowerSource>(
@@ -120,7 +120,7 @@ export class MovementSystem extends System {
         }
 
         const frontier = new PriorityQueue<MoveData>(comp);
-        const grid_system = systems.lookup(GridSystem);
+        const grid_system = this._systems.lookup(GridSystem);
         frontier.push({hex: starting_pos, power_used: 0});
 
         let reachable = Map<number, number>();
@@ -134,7 +134,8 @@ export class MovementSystem extends System {
             reachable = reachable.set(grid_system.indexOf(next.hex),
                                       next.power_used);
 
-            const cost_to_move = this.moveCostInHex(systems, entity, next.hex);
+            const cost_to_move =
+                this.moveCostInHex(entity, next.hex);
             const neighbors = grid_system.neighbors(next.hex);
 
             for (const n of neighbors) {
@@ -159,12 +160,11 @@ export class MovementSystem extends System {
      * areas, which is the main point of making this function rather than just
      * checking move_cost.
      *
-     * @param  {SystemRegistry} systems SystemRegistry
      * @param  {Entity}         entity  The entity being moved
      * @param  {Vec2}           zone    The hex we're in
      * @return {number}                 Move cost in this hex
      */
-    private moveCostInHex(systems: SystemRegistry, entity: Entity, hex: Vec2):
+    private moveCostInHex(entity: Entity, hex: Vec2):
         number {
         const moveable =
             this._state.getComponent<Moveable>(entity, ComponentType.MOVEABLE)!;

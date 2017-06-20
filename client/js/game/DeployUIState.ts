@@ -108,8 +108,7 @@ export class DeployUIState extends Observer<UIStateEvent> implements GameUIState
 
         /* Cache targets */
         const deploy_system = this._systems.lookup(DeploySystem);
-        const targets = deploy_system.getDeployTargets(
-            this._systems, this._deploying);
+        const targets = deploy_system.getDeployTargets(this._deploying);
 
         this._valid_targets = targets.map((entry: [Entity, number[]]) => {
             const [target, indices] = entry;

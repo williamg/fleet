@@ -8,13 +8,18 @@ import { Entity } from "../../../../game/Entity"
 import { GameState } from "../../../../game/GameState"
 import { Observer, LOG } from "../../../../game/util"
 import { Vec2 } from "../../../../game/Math"
+import { SystemRegistry } from "../../../../game/System"
 
 import { Deployable } from "../../../../game/components/Deployable"
 import { Moveable } from "../../../../game/components/Moveable"
 import { PowerSource, PowerType } from "../../../../game/components/PowerSource"
-
 import { TeamID } from "../../../../game/components/Team"
 import { Name } from "../../../../game/components/Name"
+import { ItemsData, Item, Items } from "../../../../game/components/Items"
+import { Health } from "../../../../game/components/Health"
+import { Pilot } from "../../../../game/components/Pilot"
+
+import { ItemSystem } from "../../../../game/systems/ItemSystem"
 
 import * as PIXI from "pixi.js"
 
@@ -25,13 +30,13 @@ const RESOURCE_WIDTH = 220;
 const HEALTH = new Vec2(0, 25);
 const BATTERY = new Vec2(0, 45);
 const RECHARGE = new Vec2(0, 70);
-const MOVE_COST = new Vec2(80, 70);
+const MOVE_COST = new Vec2(90, 70);
 
 const PILOT = new Vec2(20, 120);
 const PILOT_NAME = new Vec2(0, 0);
 const ACCURACY = new Vec2(0, 25);
-const PRECISION = new Vec2(100, 25);
-const EVASION = new Vec2(200, 25);
+const PRECISION = new Vec2(90, 25);
+const EVASION = new Vec2(180, 25);
 
 const LOADOUT = new Vec2(20, 180);
 const LOADOUT_LABEL = new Vec2(0, 0);
@@ -39,8 +44,9 @@ const ITEM_WRAPPERS = [ new Vec2(0, 19), new Vec2(0, 59), new Vec2(0, 99) ];
 
 const ITEM_ICON = new Vec2(5, 10);
 const ITEM_NAME = new Vec2(40, 5);
-const ITEM_COST = new Vec2(40, 20);
-const ITEM_COOLDOWN = new Vec2(80, 20);
+const ITEM_COST = new Vec2(40, 22);
+const ITEM_COOLDOWN = new Vec2(100, 22);
+const ITEM_CUR_COOLDOWN = new Vec2(225, 10);
 
 const BUTTON_IN = new Vec2(252, 78);
 const BUTTON_OUT = new Vec2(280, 78);
@@ -52,13 +58,15 @@ class ItemInfo {
     cost: Label;
     cooldown: Label;
     icon: PIXI.Sprite;
+    cooldown_remaining: Label;
 }
 
 export class TargetWindow extends PIXI.Container {
     /* Target window state */
+    private readonly _observer: Observer<GameInteractionEvent>;
+    private readonly _systems: SystemRegistry;
     private readonly _friendly: TeamID;
     private _game_state: GameState;
-    private _observer: Observer<GameInteractionEvent>;
     private _targeted: Entity | undefined;
     private buttons_visible: boolean;
 
@@ -87,11 +95,12 @@ export class TargetWindow extends PIXI.Container {
     private cancel_button: FrameSprite;
     private item_buttons: FrameSprite[];
 
-    constructor(observer: Observer<GameInteractionEvent>, friendly: TeamID,
-                state: GameState) {
+    constructor(observer: Observer<GameInteractionEvent>,
+                systems: SystemRegistry, friendly: TeamID, state: GameState) {
         super()
 
         this._observer = observer;
+        this._systems = systems;
         this._friendly = friendly;
         this._game_state = state;
         this._targeted = undefined;
@@ -120,6 +129,7 @@ export class TargetWindow extends PIXI.Container {
         this.loadout.y = LOADOUT.y;
 
         this.item_wrappers = [];
+        this.items = [];
 
         for (let i = 0; i < ITEM_WRAPPERS.length; ++i)
         {
@@ -172,6 +182,8 @@ export class TargetWindow extends PIXI.Container {
             new Label(undefined, "Loadout", Style.text.header, LOADOUT_LABEL);
         this.loadout.addChild(loadout_label);
 
+        this.items = [];
+
         for (let i = 0; i < ITEM_WRAPPERS.length; ++i) {
             let item_info = new ItemInfo();
             item_info.name =
@@ -180,10 +192,14 @@ export class TargetWindow extends PIXI.Container {
                 new Label("recharge.png", "", Style.text.normal, ITEM_COST);
             item_info.cooldown =
                 new Label("cooldown.png", "", Style.text.normal, ITEM_COOLDOWN);
+            item_info.cooldown_remaining =
+                new Label(undefined, "", Style.text.large, ITEM_CUR_COOLDOWN);
             this.item_wrappers[i].addChild(item_info.name,
                                            item_info.cost,
-                                           item_info.cooldown);
+                                           item_info.cooldown,
+                                           item_info.cooldown_remaining);
             this.item_wrappers[i].alpha = 0;
+            this.items.push(item_info);
             this.loadout.addChild(this.item_wrappers[i]);
         }
 
@@ -199,6 +215,7 @@ export class TargetWindow extends PIXI.Container {
             let item_button = new FrameSprite("inactive_item.png");
             item_button.x = ITEM_BUTTONS[i].x;
             item_button.y = ITEM_BUTTONS[i].y;
+            item_button.buttonMode = false;
 
             this.item_buttons.push(item_button);
             this.button_tray.addChild(item_button);
@@ -233,12 +250,21 @@ export class TargetWindow extends PIXI.Container {
         this.displayHealth(this._targeted);
         this.displayPower(this._targeted);
         this.displayMovement(this._targeted);
-        /*this.displayPilot(this._targeted);
+        this.displayPilot(this._targeted);
 
         let i = 0;
-        for (const item of this._targeted.getComponents(Item)) {
-            this.displayItem(item, i++);
-        }*/
+        const items = this._game_state.getComponent<Items>(
+            entity, ComponentType.ITEMS);
+
+        for (let i = 0; i < this.item_buttons.length; ++i) {
+            if (items != undefined && i < items.data.items.length) {
+                this.displayItem(this._targeted, items.data.items[i], i);
+            } else {
+                this.item_buttons[i].interactive = false;
+                this.item_buttons[i].buttonMode = false;
+                this.item_wrappers[i].alpha = 0;
+            }
+        }
     }
     public setButtonTrayVisible(visible: boolean): void
     {
@@ -246,10 +272,6 @@ export class TargetWindow extends PIXI.Container {
 
         if (!this.buttons_visible) {
             this.move_button.removeAllListeners("click");
-
-            for(const button of this.item_buttons) {
-                button.removeAllListeners("click");
-            }
 
             this.button_tray.x = BUTTON_IN.x;
             this.button_tray.y = BUTTON_IN.y;
@@ -268,6 +290,11 @@ export class TargetWindow extends PIXI.Container {
             this.cancel_button.on("click", () => {
                 this._observer.emit("cancel");
             });
+        }
+
+        for (const button of this.item_buttons) {
+            button.interactive = this.buttons_visible;
+            button.buttonMode = this.buttons_visible;
         }
 
         /* Update button displays */
@@ -309,9 +336,19 @@ export class TargetWindow extends PIXI.Container {
      * @param entity Entity to display
      */
     private displayHealth(entity: Entity): void {
-        this.health.setColor(Style.colors.white.num);
-        this.health.setValues(0, 100);
-        this.health.alpha = 0.2;
+        const health_comp = this._game_state.getComponent<Health>(
+            entity, ComponentType.HEALTH);
+
+        if (health_comp) {
+            this.health.setColor(Style.colors.green.num);
+            this.health.setValues(health_comp.data.current,
+                                  health_comp.data.capacity);
+            this.health.alpha = 1.0;
+        } else {
+            this.health.setColor(Style.colors.white.num);
+            this.health.setValues(0, 100);
+            this.health.alpha = 0.2;
+        }
     }
     /**
      * Display power info of entity
@@ -422,43 +459,59 @@ export class TargetWindow extends PIXI.Container {
      *
      * @param entity Entity to display
      */
-/*    private displayPilot(entity: Entity): void {
-        const pilot = entity.getComponent(Pilot);
+    private displayPilot(entity: Entity): void {
+        const pilot_comp = this._game_state.getComponent<Pilot>(
+            entity, ComponentType.PILOT);
 
-        if (pilot)
-        {
+        if (pilot_comp) {
+            const pilot = pilot_comp.data;
             this.pilot_name.label.text = pilot.name;
-            this.precision.label.text = pilot.precision.value().toString();
-            this.accuracy.label.text = pilot.accuracy.value().toString();
-            this.evasion.label.text = pilot.evasion.value().toString();
+            this.precision.label.text = pilot.precision.toString();
+            this.accuracy.label.text = pilot.accuracy.toString();
+            this.evasion.label.text = pilot.evasion.toString();
             this.pilot.alpha = 1.0;
-        }
-        else
-        {
+        } else {
             this.pilot_name.label.text = "Unmanned";
-            this.precision.label.text = "--";
-            this.accuracy.label.text = "--";
-            this.evasion.label.text = "--";
+            this.precision.label.text = "---";
+            this.accuracy.label.text = "---";
+            this.evasion.label.text = "---";
             this.pilot.alpha = 0.2;
         }
-    }*/
+    }
 
-    /*private displayItem(item: Item, index: number): void {
-        if (item.usable()) {
+    private displayItem(entity: Entity, item: Item, index: number): void {
+        const item_system = this._systems.lookup(ItemSystem);
+
+        this.item_buttons[index].removeAllListeners("click");
+        this.item_buttons[index].addListener("click", () => {
+            this._observer.emit("item", {
+                entity: entity,
+                index: index
+            });
+        });
+
+        if (item_system.itemUsable(entity, index)) {
+            this.item_wrappers[index].alpha = 1;
+            this.item_buttons[index].interactive = true;
             this.item_buttons[index].texture =
                 PIXI.Texture.fromFrame("active_item.png");
+
         } else {
+            this.item_wrappers[index].alpha = .7;
+            this.item_buttons[index].interactive = false;
             this.item_buttons[index].texture =
                 PIXI.Texture.fromFrame("inactive_item.png");
         }
-    }*/
 
-    /**
-     * Display buttons for this entity
-     *
-     * @param entity Entity to display
-     */
-    private displayButtons(entity: Entity): void {
-        
+        this.items[index].cooldown.label.text = item.cooldown.value.toString();
+        this.items[index].cost.label.text = item.cost.toString();
+        this.items[index].name.label.text = item.name;
+
+        if (item.cooldown.active && item.cooldown.remaining > 0) {
+            this.items[index].cooldown_remaining.label.text =
+                item.cooldown.remaining.toString();
+        } else {
+            this.items[index].cooldown_remaining.label.text = "";
+        }
     }
 }

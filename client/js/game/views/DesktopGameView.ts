@@ -80,7 +80,7 @@ export class DesktopGameView extends Observer<GameInteractionEvent> {
         /* Initialize UI elements */
         this._grid = new Grid(this._systems, this, this._friendly);
         this._target_window =
-            new TargetWindow(this, this._friendly, this._game_state)
+            new TargetWindow(this, this._systems, this._friendly, this._game_state)
         this._hanger_window =
             new HangerWindow(this._ui, this, this._systems, this._friendly,
                              this._game_state);

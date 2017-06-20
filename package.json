@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "immutable": "^3.8.1",
+    "jsonfile": "^3.0.0",
     "pixi.js": "^4.5.1",
     "ws": "^1.1.1"
   }

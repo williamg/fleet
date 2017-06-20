@@ -44,6 +44,16 @@ export const Style = {
             fontFamily: "Arial",
             fontSize: 20,
             fill: "#212121",
+        }),
+        small: new PIXI.TextStyle({
+            fontFamily: "Arial",
+            fontSize: 9,
+            fill: "#FFFFFF"
+        }),
+        large: new PIXI.TextStyle({
+            fontFamily: "Arial",
+            fontSize: 20,
+            fill: "#FFFFFF"
         })
     },
     colors: {

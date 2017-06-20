@@ -1,0 +1,7 @@
+{
+    "max_accuracy": 10,
+    "max_precision": 10,
+    "max_evasion": 10,
+    "base_crit_multiplier": 1.5,
+    "max_crit_multiplier": 3.0
+}

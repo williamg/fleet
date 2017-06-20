@@ -100,8 +100,7 @@ export class MoveUIState extends Observer<UIStateEvent> implements GameUIState {
         const grid_system = this._systems.lookup(GridSystem);
 
         /* Cache targets */
-        const cost_map = movement_system.getValidMoves(
-            this._systems, this._moving);
+        const cost_map = movement_system.getValidMoves(this._moving);
         const locations = [];
 
         for (const [index, cost] of cost_map) {

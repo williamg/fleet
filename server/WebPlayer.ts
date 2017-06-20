@@ -20,9 +20,13 @@ import { Change, CreateEntity, AttachComponent } from "../game/Changes"
 
 import { Deployable, newDeployable } from "../game/components/Deployable"
 import { Name, newName } from "../game/components/Name"
-import { Team, TeamID, newTeam } from "../game/components/Team"
+import { Team, TeamID, newTeam, otherTeam } from "../game/components/Team"
 import { PowerSource, PowerType, newPowerSource }
     from "../game/components/PowerSource"
+import { newItems, Items } from "../game/components/Items"
+import { newHealth, Health } from "../game/components/Health"
+import { newPilot, Pilot } from "../game/components/Pilot"
+import { Shockwave } from "../game/systems/items/Shockwave"
 
 import { List } from "immutable"
 
@@ -62,11 +66,30 @@ export class WebPlayer extends Player {
                 current: max,
                 recharge: 10 + Math.floor(15 * Math.random()),
             });
+            const items = newItems(pool.component(), {
+                items: [
+                    Shockwave.create(),
+                ]
+            });
+            const max_health = 50 + Math.floor(50 * Math.random());
+            const health = newHealth(pool.component(), {
+                capacity: max_health,
+                current: max_health
+            });
+            const pilot = newPilot(pool.component(), {
+                name: "Pilot " + i.toString(),
+                accuracy: 2,
+                precision: 3,
+                evasion: 4
+            });
 
             state.makeChange(new AttachComponent(ent, name));
             state.makeChange(new AttachComponent(ent, deployable));
             state.makeChange(new AttachComponent(ent, team));
             state.makeChange(new AttachComponent(ent, power));
+            state.makeChange(new AttachComponent(ent, items));
+            state.makeChange(new AttachComponent(ent, health));
+            state.makeChange(new AttachComponent(ent, pilot));
         }
     }
     /**

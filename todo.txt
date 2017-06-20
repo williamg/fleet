@@ -1,0 +1,10 @@
+Client:
+- Clean up game views:
+    - Make private parameters follow _name convention
+    - Buttons on target window seem messy
+
+Server:
+- Implement some kind of "testing" mode
+
+Game:
+- Effects
