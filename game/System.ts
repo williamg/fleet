@@ -28,7 +28,7 @@ export type MoveEvent = {
     from: Vec2
 };
 
-type ItemEventData = {
+export type ItemEventData = {
     changer: GameStateChanger
     entity: Entity,
     index: number,

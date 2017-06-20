@@ -26,6 +26,7 @@ import { PowerSource, PowerType, newPowerSource }
 import { newItems, Items } from "../game/components/Items"
 import { newHealth, Health } from "../game/components/Health"
 import { newPilot, Pilot } from "../game/components/Pilot"
+import { Shockwave } from "../game/systems/items/Shockwave"
 
 import { List } from "immutable"
 
@@ -76,7 +77,7 @@ export class WebPlayer extends Player {
                         wait_for: undefined
                     },
                     cost: 15,
-                    event: "shockwave",
+                    event: Shockwave.EVENT,
                     targets: []
                 }]
             });

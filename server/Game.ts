@@ -6,7 +6,8 @@ import { Action, ActionType } from "../game/Action"
 import { Entity } from "../game/Entity"
 import { IDPool } from "../game/IDPool"
 import { GameState, GameStateChanger } from "../game/GameState"
-import { Change, StartGame, EndTurn, CreateEntity, AttachComponent } from "../game/Changes"
+import { Change, StartGame, EndTurn, CreateEntity, AttachComponent }
+    from "../game/Changes"
 import { Vec2 } from "../game/Math"
 import { Player } from "./Player"
 import { LOG } from "../game/util"
@@ -17,12 +18,17 @@ import { DeploySystem } from "../game/systems/DeploySystem"
 import { PowerSystem } from "../game/systems/PowerSystem"
 import { MovementSystem } from "../game/systems/MovementSystem"
 import { ItemSystem } from "../game/systems/ItemSystem"
+import { CombatSystem } from "../game/systems/CombatSystem"
+import { HealthSystem } from "../game/systems/HealthSystem"
+import { Shockwave } from "../game/systems/items/Shockwave"
+
 
 import { newTeam, Team, TeamID } from "../game/components/Team"
 import { newHexPosition } from "../game/components/HexPosition"
 import { newDeployZone } from "../game/components/DeployZone"
 import { newName } from "../game/components/Name"
 import { newPowerSource, PowerType } from "../game/components/PowerSource"
+import { newHealth } from "../game/components/Health"
 
 export const END_TURN_EVENT = "endturn";
 export const ACTION_EVENT = "action";
@@ -96,6 +102,9 @@ export class Game {
         this._systems.register(MovementSystem);
         this._systems.register(PowerSystem);
         this._systems.register(ItemSystem);
+        this._systems.register(CombatSystem);
+        this._systems.register(HealthSystem);
+        this._systems.register(Shockwave);
 
         /* Initialize entities */
         const changer = new GameStateChanger(this._state, this._systems);
@@ -157,6 +166,10 @@ export class Game {
                 current: 100,
                 recharge: 25
             });
+            const health = newHealth(this._id_pool.component(), {
+                current: 250,
+                capacity: 250
+            });
 
             state.makeChange(new CreateEntity(dp));
             state.makeChange(new AttachComponent(dp, pos));
@@ -164,6 +177,7 @@ export class Game {
             state.makeChange(new AttachComponent(dp, name));
             state.makeChange(new AttachComponent(dp, team));
             state.makeChange(new AttachComponent(dp, power));
+            state.makeChange(new AttachComponent(dp, health));
         }
 
     }
