@@ -147,6 +147,16 @@ export class GridSystem extends System {
         }
     }
     /**
+     * Compute the straight-line distance between two locations
+     * @param  {Vec2}   a First location
+     * @param  {Vec2}   b Second location
+     * @return {number}   Straight-line distance
+     */
+    public straightLineDistance(a: Vec2, b: Vec2): number {
+        return (Math.abs(a.x - b.x) + Math.abs(a.x + a.y - b.x - b.y) +
+                Math.abs(a.y - b.y)) / 2;
+    }
+    /**
      * Update an entity's position on the grid
      *
      * @param {GameState} state  Current game state

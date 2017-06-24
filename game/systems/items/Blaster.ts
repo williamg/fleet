@@ -1,8 +1,8 @@
 /**
- * @file game/systesm/items/Shockwave.ts
- * System for the Shockwave item
+ * @file game/systesm/items/Blaster.ts
+ * System for the Blaster item
  *
- * Deals damage to all adjacent enemies
+ * Deals moderate damage to a nearby enemy
  */
 import { System, SystemObserver, SystemRegistry, ItemEventData }
     from "../../System"
@@ -14,19 +14,21 @@ import { Vec2 } from "../../Math"
 import { Entity } from "../../Entity"
 import { CombatSystem } from "../CombatSystem"
 import { items } from "../../GameData"
+import { LOG, ASSERT } from "../../util"
 
 import { HexPosition } from "../../components/HexPosition"
 import { Team, TeamID } from "../../components/Team"
-import { Item, TargetFilter } from "../../components/Items"
+import { Item, Alliance, TargetFilter } from "../../components/Items"
 import { Health } from "../../components/Health"
 
-export class Shockwave extends System {
+export class Blaster extends System {
+
     constructor(id_pool: IDPool, observer: SystemObserver,
                 systems: SystemRegistry, state: GameState) {
         super(id_pool, observer, systems, state);
 
         /* Subscribe to shockwave event */
-        observer.items.addListener(items.shockwave.name,
+        observer.items.addListener(items.blaster.name,
                                    this.handle.bind(this));
     }
 
@@ -36,20 +38,25 @@ export class Shockwave extends System {
      */
     public static create(): Item {
         return {
-            name: items.shockwave.name,
-            description: items.shockwave.description,
+            name: items.blaster.name,
+            description: items.blaster.description,
             cooldown: {
-                value: items.shockwave.cooldown,
+                value: items.blaster.cooldown,
                 active: false,
                 remaining: 0,
                 wait_for: undefined
             },
-            cost: items.shockwave.cost,
-            target: undefined
+            cost: items.blaster.cost,
+            target: {
+                entity: {
+                    team: Alliance.ENEMY
+                },
+                range: items.blaster.range
+            }
         };
     }
 
-    private handle(event: ItemEventData) {
+    private handle(event: ItemEventData): void {
         const entity = event.entity;
         const changer = event.changer;
 
@@ -62,40 +69,28 @@ export class Shockwave extends System {
         const teamc = changer.state.getComponent<Team>(
             entity, ComponentType.TEAM)!;
 
-        /* Get neighbors */
+        /* Get target */
+        ASSERT(event.target != undefined);
+
         const grid_system = this._systems.lookup(GridSystem);
-        const neighbors = grid_system.neighbors(pos);
+        const target_ent = grid_system.occupancyStatus(event.target!);
 
-        /* FIXME: Typesafe way to avoid the cast? */
-        const neighbor_enemies: Entity[] =
-            neighbors.map((p) => {
-                return grid_system.occupancyStatus(p);
-            }).filter((s) => {
-                if (s == "free" || s == "unknown") {
-                    return false;
-                }
-
-                const neighbor_team = changer.state.getComponent<Team>(
-                    s, ComponentType.TEAM)!;
-                const health = changer.state.getComponent<Health>(
-                    s, ComponentType.HEALTH);
-
-                return health != undefined &&
-                       neighbor_team.data.team != teamc.data.team;
-            }) as Entity[];
+        /* We've already validated targets, so this should never happen */
+        if (target_ent == "free" || target_ent == "unknown")
+        {
+            LOG.WARN("Invalid Blaster target");
+            ASSERT(false);
+        }
 
         /* Do damage */
         const combat_system = this._systems.lookup(CombatSystem);
+        const damage = {
+            attacker: entity,
+            defender: target_ent as Entity,
+            amount: items.blaster.damage
+        };
 
-        for (const n of neighbor_enemies) {
-            const damage = {
-                attacker: entity,
-                defender: n,
-                amount: items.shockwave.damage
-            };
-
-            combat_system.doDamage(damage, changer);
-        }
+        combat_system.doDamage(damage, changer);
     }
 
 }

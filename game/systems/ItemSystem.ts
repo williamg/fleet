@@ -11,12 +11,13 @@ import { UpdateComponent } from "../Changes"
 import { ASSERT } from "../util"
 import { Vec2 } from "../Math"
 
-import { Items, ItemsData } from "../components/Items"
+import { Alliance, Items, Item, ItemsData } from "../components/Items"
 import { PowerSource, PowerType } from "../components/PowerSource"
 import { Team, TeamID } from "../components/Team"
 import { HexPosition } from "../components/HexPosition"
 
 import { PowerSystem } from "../systems/PowerSystem"
+import { GridSystem } from "../systems/GridSystem"
 
 import { List } from "immutable"
 
@@ -89,22 +90,11 @@ export class ItemSystem extends System {
     /**
      * Determine whether or not an entity can use an item
      *
-     * @param  {Entity}         entity Entity to check
-     * @param  {number}         index  Index of item to check
-     * @return {boolean}               Whether or not the entity can use item
+     * @param  {Entity}  entity Entity to check
+     * @param  {Item}    item   Item to check
+     * @return {boolean}        Whether or not the entity can use item
      */
-    public itemUsable(entity: Entity, index: number): boolean {
-        const items_comp = this._state.getComponent<Items>(
-            entity, ComponentType.ITEMS);
-
-        if (items_comp == undefined) {
-            return false;
-        } else if (items_comp.data.items.length <= index) {
-            return false;
-        }
-
-        const item = items_comp.data.items[index];
-
+    public itemUsable(entity: Entity, item: Item): boolean {
         /* Check cooldown */
         if (item.cooldown.remaining > 0) {
             return false;
@@ -128,22 +118,81 @@ export class ItemSystem extends System {
         return true;
     }
     /**
+     * Validate a user's target selection
+     *
+     * @param  {Entity}  entity Entity using the item
+     * @param  {Item}    item   Item being used
+     * @param  {Vec2}    target Target to validate
+     * @return {boolean}        Whether or not the target is valid
+     */
+    public isValidTarget(entity: Entity, item: Item, target: Vec2 | undefined):
+        boolean {
+        if (item.target == undefined){
+            return target == undefined;
+        } else if (target == undefined) {
+            return false;
+        }
+
+        const grid_system = this._systems.lookup(GridSystem);
+        const posc = this._state.getComponent<HexPosition>(
+            entity, ComponentType.HEX_POSITION)!;
+        const pos = new Vec2(posc.data.x, posc.data.y);
+
+        /* First, make sure range is satisfied */
+        if (grid_system.straightLineDistance(pos, target) > item.target.range) {
+            return false;
+        }
+
+        if (item.target.entity == undefined) {
+            return true;
+        }
+
+        /* Item requires an entity */
+        const target_stat = grid_system.occupancyStatus(target);
+
+        if (target_stat == "free" || target_stat == "unknown") {
+            return false;
+        }
+
+        const entity_team = this._state.getComponent<Team>(
+            entity, ComponentType.TEAM)!.data.team;
+        const target_team = this._state.getComponent<Team>(
+            target_stat, ComponentType.TEAM)!.data.team;
+
+        switch (item.target.entity.team) {
+            case Alliance.ANY: return true;
+            case Alliance.FRIENDLY: return entity_team == target_team;
+            case Alliance.ENEMY: return entity_team != target_team;
+        }
+
+    }
+    /**
      * Attempt to use an item on an entity
      *
      * @param  {GameStateChanger} changer Game state changer
      * @param  {Entity}           entity  Entity using power
      * @param  {number}           index   Index of item to use
-     * @param  {Vec2[]}           targets Targets
+     * @param  {Vec2 | undefined} target  Target
      * @return {boolean}                  Whether or not the item was used
      */
     public useItem(changer: GameStateChanger, entity: Entity, index: number,
-                   targets: Vec2[]): boolean {
-        if (!this.itemUsable(entity, index)) {
+                   target: Vec2 | undefined): boolean {
+        const items_comp = changer.state.getComponent<Items>(
+            entity, ComponentType.ITEMS);
+
+        if (items_comp == undefined || items_comp.data.items.length <= index) {
             return false;
         }
-        const items_comp = this._state.getComponent<Items>(
-            entity, ComponentType.ITEMS)!;
+
         const item = items_comp.data.items[index];
+
+        if (!this.itemUsable(entity, item)) {
+            return false;
+        }
+
+        if (!this.isValidTarget(entity, item, target)) {
+            return false;
+        }
 
         /* First, charge for usage */
         const power_system = this._systems.lookup(PowerSystem);
@@ -176,7 +225,7 @@ export class ItemSystem extends System {
             changer: changer,
             entity: entity,
             index: index,
-            targets: targets
+            target: target
         });
 
         return true;

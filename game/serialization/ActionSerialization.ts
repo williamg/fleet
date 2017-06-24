@@ -28,7 +28,7 @@ export type DeployJSON = {
 export type UseItemJSON = {
     entity: Entity,
     index: number,
-    targets: [number, number][]
+    target: [number, number] | undefined
 };
 /**
  * Represent the action as a string
@@ -205,12 +205,16 @@ export function deserializeUseItem(use_str: string): UseItem {
  * @returns {UseItemJSON}     JSON representation of UseItem
  */
 export function useItemToJSON(use: UseItem): UseItemJSON {
+    let targetJSON: [number, number] | undefined = undefined;
+
+    if (use.target != undefined) {
+        targetJSON = [use.target.x, use.target.y];
+    }
+
     return {
         entity: use.entity,
         index: use.index,
-        targets: use.targets.map((v: Vec2) => { 
-            return [v.x, v.y] as [number, number];
-        })
+        target: targetJSON,
     };
 }
 /**
@@ -221,9 +225,12 @@ export function useItemToJSON(use: UseItem): UseItemJSON {
  * @throws {Error}            On invalid serialization input
  */
 export function useItemFromJSON(use_json: UseItemJSON): UseItem {
-    const vecs = use_json.targets.map((pair: [number, number]) => {
-        const [x, y] = pair;
-        return new Vec2(x, y);
-    });
-    return new UseItem(use_json.entity, use_json.index, vecs);
+    let target = undefined;
+
+    if (use_json.target != undefined) {
+        const [x, y] = use_json.target;
+        target = new Vec2(x, y);
+    }
+
+    return new UseItem(use_json.entity, use_json.index, target);
 }

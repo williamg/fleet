@@ -123,22 +123,22 @@ export class UseItem extends Action {
      */
     public readonly index: number;
     /**
-     * Targets array
-     * @type {Vec2[]}
+     * Target
+     * @type {Vec2 | undefined}
      */
-    public readonly targets: Vec2[]
+    public readonly target: Vec2 | undefined;
 
-    constructor(entity: Entity, index: number, targets: Vec2[]) {
+    constructor(entity: Entity, index: number, target: Vec2 | undefined) {
         super(ActionType.USE_ITEM);
 
         this.entity = entity;
         this.index = index;
-        this.targets = targets;
+        this.target = target;
     }
 
     public execute(changer: GameStateChanger, systems: SystemRegistry): void {
         const item_system = systems.lookup(ItemSystem);
-        item_system.useItem(changer, this.entity, this.index, this.targets);
+        item_system.useItem(changer, this.entity, this.index, this.target);
     }
 }
 

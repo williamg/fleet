@@ -5,9 +5,15 @@
 import { Component, ComponentID, ComponentType, ComponentImpl } from "../Component"
 import { TeamID } from "./Team"
 
+export enum Alliance {
+    FRIENDLY,
+    ENEMY,
+    ANY
+};
+
 export type TargetFilter = {
     entity: {
-        team: TeamID | undefined
+        team: Alliance,
     } | undefined,
     range: number
 };
@@ -22,7 +28,7 @@ export type Item = {
         wait_for: string | undefined
     },
     cost: number,
-    targets: TargetFilter[],
+    target: TargetFilter | undefined,
 }
 
 

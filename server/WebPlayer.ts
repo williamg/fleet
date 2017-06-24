@@ -27,6 +27,7 @@ import { newItems, Items } from "../game/components/Items"
 import { newHealth, Health } from "../game/components/Health"
 import { newPilot, Pilot } from "../game/components/Pilot"
 import { Shockwave } from "../game/systems/items/Shockwave"
+import { Blaster } from "../game/systems/items/Blaster"
 
 import { List } from "immutable"
 
@@ -69,6 +70,7 @@ export class WebPlayer extends Player {
             const items = newItems(pool.component(), {
                 items: [
                     Shockwave.create(),
+                    Blaster.create()
                 ]
             });
             const max_health = 50 + Math.floor(50 * Math.random());

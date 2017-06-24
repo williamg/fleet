@@ -9,6 +9,7 @@ import { GameUIState, UIStateEvent } from "./GameUIState"
 import { NotMyTurnUIState } from "./NotMyTurnUIState"
 import { DeployUIState } from "./DeployUIState"
 import { MoveUIState } from "./MoveUIState"
+import { TargetUIState } from "./TargetUIState"
 import { GameView, HexStyle } from "./GameView"
 
 import { UseItem } from "../../../game/Action"
@@ -126,7 +127,7 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
             this._view.setHexStyle(hex, HexStyle.SELECTED);
         }
     }
-    private onItem(item_data: { entity: Entity, index:  number}): void {
+    private onItem(item_data: { entity: Entity, index: number}): void {
         /* Only transition to targeting state if the item requires targets */
         const items = this._game_state.getComponent<Items>(
             item_data.entity, ComponentType.ITEMS);
@@ -139,16 +140,18 @@ export class MyTurnUIState extends Observer<UIStateEvent> implements GameUIState
             return;
         }
 
-        if (items.data.items[item_data.index].targets.length == 0) {
+        if (items.data.items[item_data.index].target == undefined) {
             /* No targets required, emit action */
-            const useItem = new UseItem(item_data.entity, item_data.index, []);
+            const useItem =
+                new UseItem(item_data.entity, item_data.index, undefined);
             this.emit("action", useItem);
             return;
         }
 
-        /* Transition into targeting state */
-        throw new Error("UNIMPLEMENTTED");
-
+        const target = new TargetUIState(this._view, this._systems,
+                                         this._friendly, this._game_state,
+                                         item_data);
+        this.emit("change state", target);
     }
     private onMove(entity: Entity): void {
         const move =

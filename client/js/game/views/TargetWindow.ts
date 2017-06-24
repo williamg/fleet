@@ -303,17 +303,29 @@ export class TargetWindow extends PIXI.Container {
         }
     }
     public setCancelPos(pos: CancelPos): void {
-        if (pos == CancelPos.HIDDEN) {
-            this.button_tray.removeChild(this.cancel_button);
-            return;
+        switch (pos) {
+            case CancelPos.HIDDEN:
+                this.button_tray.removeChild(this.cancel_button);
+                return;
+            case CancelPos.MOVE:
+                this.cancel_button.x = MOVE_BUTTON.x;
+                this.cancel_button.y = MOVE_BUTTON.y;
+                break;
+            case CancelPos.ITEM_1:
+                this.cancel_button.x = ITEM_BUTTONS[0].x;
+                this.cancel_button.y = ITEM_BUTTONS[0].y;
+                break;
+            case CancelPos.ITEM_2:
+                this.cancel_button.x = ITEM_BUTTONS[1].x;
+                this.cancel_button.y = ITEM_BUTTONS[1].y;
+                break;
+            case CancelPos.ITEM_3:
+                this.cancel_button.x = ITEM_BUTTONS[2].x;
+                this.cancel_button.y = ITEM_BUTTONS[2].y;
+                break;
         }
 
         this.button_tray.addChild(this.cancel_button);
-
-        if (pos == CancelPos.MOVE) {
-            this.cancel_button.x = MOVE_BUTTON.x;
-            this.cancel_button.y = MOVE_BUTTON.y;
-        }
     }
     /**
      * Display ship info
@@ -490,7 +502,7 @@ export class TargetWindow extends PIXI.Container {
             });
         });
 
-        if (item_system.itemUsable(entity, index)) {
+        if (item_system.itemUsable(entity, item)) {
             this.item_wrappers[index].alpha = 1;
             this.item_buttons[index].interactive = true;
             this.item_buttons[index].texture =

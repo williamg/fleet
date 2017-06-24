@@ -32,7 +32,7 @@ export type ItemEventData = {
     changer: GameStateChanger
     entity: Entity,
     index: number,
-    targets: Vec2[],
+    target: Vec2 | undefined,
 };
 
 export class SystemObserver {
