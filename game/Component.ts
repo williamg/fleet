@@ -18,8 +18,13 @@ export enum ComponentType {
     MOVEABLE,
     ITEMS,
     HEALTH,
-        PILOT
+    PILOT,
+
+    /* Effects MUST be at the end */
+    EFFECT_SHIELDED,
 };
+
+export const FIRST_EFFECT = ComponentType.EFFECT_SHIELDED;
 
 /* Component IDs should be treated as an opaque, unmodifiable type for 90% of
  * use cases. */
