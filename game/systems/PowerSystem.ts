@@ -8,14 +8,31 @@ import { Entity } from "../Entity"
 import { Component, ComponentType } from "../Component"
 import { GameState, GameStateChanger } from "../GameState"
 import { UpdateComponent } from "../Changes"
-import { ASSERT } from "../util"
+import { ASSERT, LOG } from "../util"
 import { clamp } from "../Math"
+import { Messenger } from "../Messenger"
 import { PowerSource, PowerType } from "../components/PowerSource"
 import { Team, TeamID } from "../components/Team"
 
 import { List } from "immutable"
 
+export type ChargeEvent = {
+    entity: Entity,
+    amount: number
+};
+
 export class PowerSystem extends System {
+    /**
+     * Power system messengers
+     */
+    public readonly preCharge: Messenger<ChargeEvent, number> =
+        new Messenger<ChargeEvent, number>();
+    public readonly postCharge: Messenger<ChargeEvent, undefined> =
+        new Messenger<ChargeEvent, undefined>();
+    public readonly preDischarge: Messenger<ChargeEvent, number> =
+        new Messenger<ChargeEvent, number>();
+    public readonly postDischarge: Messenger<ChargeEvent, undefined> =
+        new Messenger<ChargeEvent, undefined>();
     /**
      * List of powered entities
      * @type {List<Entity>}
@@ -81,43 +98,62 @@ export class PowerSystem extends System {
         }
     }
     /**
-     * Determine whether or not an entity has enough power for an operation
+     * Increment a unit's power by a given amount
      *
-     * @param  {Entity}  entity Entity to check
-     * @param  {number}  amount Amount of power necessary
-     * @return {boolean}        Whether or not the entity has enough power
-     */
-    public hasEnough(entity: Entity, amount: number): boolean {
-        if (amount <= 0) return true;
-
-        const power_comp = this._state.getComponent<PowerSource>(
-            entity, ComponentType.POWER_SOURCE);
-
-        if (power_comp == undefined) {
-            return false;
-        }
-
-        return power_comp.data.current >= amount;
-    }
-    /**
-     * Use some power for the given entity. Before calling this, call
-     * hasEnough(entity, number) to be sure this will succeed.
-     *
-     * @param {GameStateChanger} changer Game state changer
      * @param {Entity}           entity Entity using power
      * @param {number}           amount Amount of power to use
+     * @param {GameStateChanger} changer Game state changer
      */
-    public usePower(changer: GameStateChanger, entity: Entity,
-                    amount: number): void {
-        ASSERT(this.hasEnough(entity, amount));
+    public incrementCharge (entity: Entity, amount: number,
+                            changer: GameStateChanger): void {
+        if (amount == 0) {
+            return;
+        }
 
         const power_comp = this._state.getComponent<PowerSource>(
             entity, ComponentType.POWER_SOURCE)!;
+        let charge_event = {
+            entity: entity,
+            amount: amount
+        };
+
+        if (amount > 0) {
+            const new_amount = this.preCharge.publish(
+                charge_event, amount, entity, changer);
+
+            if (new_amount < 0) {
+                LOG.WARN("Messenger changed sign of charge amount");
+                return;
+            }
+
+            charge_event.amount = new_amount;
+        } else {
+            const new_amount = this.preDischarge.publish(
+                charge_event, amount, entity, changer);
+
+            if (new_amount > 0) {
+                LOG.WARN("Messenger changed sign of charge amount");
+                return;
+            }
+
+            charge_event.amount = new_amount;
+        }
+
+        const new_charge =
+            clamp(power_comp.data.current + charge_event.amount, 0,
+                  power_comp.data.capacity);
 
         const new_power_comp = power_comp.with({
-            current: power_comp.data.current - amount
+            current: new_charge
         });
 
         changer.makeChange(new UpdateComponent(power_comp));
+
+        if (charge_event.amount > 0) {
+            this.postCharge.publish(charge_event, undefined, entity, changer);
+        } else {
+            this.postDischarge.publish(
+                charge_event, undefined, entity, changer);
+        }
     }
 }

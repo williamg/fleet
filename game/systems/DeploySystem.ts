@@ -14,6 +14,7 @@ import { ASSERT, LOG } from "../util"
 import { HexPosition, newHexPosition } from "../components/HexPosition"
 import { Deployable } from "../components/Deployable"
 import { DeployZone } from "../components/DeployZone"
+import { PowerSource } from "../components/PowerSource"
 import { Team } from "../components/Team"
 
 import { PowerSystem } from "./PowerSystem"
@@ -82,10 +83,11 @@ export class DeploySystem extends System {
             return false
         }
 
-        const zone_comp = changer.state.getComponent<DeployZone>(
-            zone, ComponentType.DEPLOY_ZONE)!;
+
         const deployable_comp = changer.state.getComponent<Deployable>(
             deploying, ComponentType.DEPLOYABLE)!;
+        const zone_comp = changer.state.getComponent<DeployZone>(
+            zone, ComponentType.DEPLOY_ZONE)!;
         const zone_pos = changer.state.getComponent<HexPosition>(
             zone, ComponentType.HEX_POSITION)!;
 
@@ -95,7 +97,9 @@ export class DeploySystem extends System {
         });
 
         const power_system = this._systems.lookup(PowerSystem);
-        power_system.usePower(changer, zone, deployable_comp.data.deploy_cost);
+
+        power_system.incrementCharge(
+            zone, -deployable_comp.data.deploy_cost, changer);
         changer.makeChange(new DetachComponent(deploying, deployable_comp));
         changer.makeChange(new AttachComponent(deploying, pos_comp));
 
@@ -151,22 +155,23 @@ export class DeploySystem extends System {
      * @return {boolean}                Whether or not the zone is valid
      */
     private zoneValidForEntity(entity: Entity, zone: Entity): boolean {
+        /* Zone must be the same team */
         const ent_team =
             this._state.getComponent<Team>(entity, ComponentType.TEAM)!;
         const zone_team =
             this._state.getComponent<Team>(zone, ComponentType.TEAM)!;
 
-        /* Zone must be the same team */
         if (ent_team.data.team != zone_team.data.team) {
             return false;
         }
 
-        const deployable = this._state.getComponent<Deployable>(
-            entity, ComponentType.DEPLOYABLE)!;
-
         /* Zone must have enough power */
-        const power_system = this._systems.lookup(PowerSystem);
-        if (!power_system.hasEnough(zone, deployable.data.deploy_cost)) {
+        const deployable_comp = this._state.getComponent<Deployable>(
+            entity, ComponentType.DEPLOYABLE)!;
+        const power_comp = this._state.getComponent<PowerSource>(
+            zone, ComponentType.POWER_SOURCE)!;
+
+        if (deployable_comp.data.deploy_cost > power_comp.data.current) {
             return false;
         }
 

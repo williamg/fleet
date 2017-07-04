@@ -87,6 +87,7 @@ export class Blaster extends System {
         const damage = {
             attacker: entity,
             defender: target_ent as Entity,
+            item_index: event.index,
             amount: items.blaster.damage
         };
 

@@ -101,9 +101,10 @@ export class ItemSystem extends System {
         }
 
         /* Check resource */
-        const power_system = this._systems.lookup(PowerSystem);
+        const power_comp = this._state.getComponent<PowerSource>(
+            entity, ComponentType.POWER_SOURCE)!;
 
-        if (!power_system.hasEnough(entity, item.cost)) {
+        if (power_comp.data.current < item.cost) {
             return false;
         }
 
@@ -196,7 +197,7 @@ export class ItemSystem extends System {
 
         /* First, charge for usage */
         const power_system = this._systems.lookup(PowerSystem);
-        power_system.usePower(changer, entity, item.cost);
+        power_system.incrementCharge(entity, -item.cost, changer);
 
         /* Then, handle cooldown */
         item.cooldown.remaining = item.cooldown.value;

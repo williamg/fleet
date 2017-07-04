@@ -10,11 +10,32 @@ import { GameState, GameStateChanger } from "../GameState"
 import { UpdateComponent } from "../Changes"
 import { ASSERT } from "../util"
 import { clamp } from "../Math"
+import { Messenger } from "../Messenger"
 import { Health } from "../components/Health"
 
 import { List } from "immutable"
 
+export type HealthEvent = {
+    entity: Entity,
+    amount: number
+};
+
 export class HealthSystem extends System {
+    /**
+     * Health messengers
+     */
+    public readonly preHeal: Messenger<HealthEvent, number> =
+        new Messenger<HealthEvent, number>();
+    public readonly postHeal: Messenger<HealthEvent, undefined> =
+        new Messenger<HealthEvent, undefined>();
+    public readonly preTakeDamage: Messenger<HealthEvent, number> =
+        new Messenger<HealthEvent, number>();
+    public readonly postTakeDamage: Messenger<HealthEvent, undefined> =
+        new Messenger<HealthEvent, undefined>();
+    public readonly preDestroy: Messenger<HealthEvent, undefined> =
+        new Messenger<HealthEvent, undefined>();
+    public readonly postDestroy: Messenger<HealthEvent, undefined> =
+        new Messenger<HealthEvent, undefined>();
     /**
      * List of entities with health
      * @type {List<Entity>}
@@ -59,8 +80,23 @@ export class HealthSystem extends System {
      */
     public incrementHealth(entity: Entity, amount: number,
                            changer: GameStateChanger): void {
+        if (amount == 0) return;
+
         const health_comp = this._state.getComponent<Health>(
             entity, ComponentType.HEALTH)!;
+        let health_info = { entity: entity, amount: amount };
+
+        if (amount < 0) {
+            health_info.amount = this.preTakeDamage.publish(
+                health_info, amount, entity, changer);
+
+            if (amount >= 0) return;
+        } else {
+            health_info.amount = this.preHeal.publish(
+                health_info, amount, entity, changer);
+
+            if (amount <= 0) return;
+        }
 
         const value = clamp(0, health_comp.data.current + amount,
                             health_comp.data.capacity);
@@ -68,12 +104,19 @@ export class HealthSystem extends System {
         if (value == 0) {
             /* Destroy entity */
             ASSERT(false);
-        } else {
-            const new_health_comp = health_comp.with({
-                current: value
-            });
+        }
 
-            changer.makeChange(new UpdateComponent(new_health_comp));
+        const new_health_comp = health_comp.with({
+            current: value
+        });
+
+        changer.makeChange(new UpdateComponent(new_health_comp));
+
+        if (health_info.amount < 0) {
+            this.postTakeDamage.publish(
+                health_info, undefined, entity, changer);
+        } else {
+            this.postHeal.publish(health_info, undefined, entity, changer);
         }
     }
 }

@@ -72,7 +72,7 @@ export class MovementSystem extends System {
         const power_system = this._systems.lookup(PowerSystem);
         const cost = valid_moves.get(dest_index)!;
 
-        power_system.usePower(changer, moving, cost);
+        power_system.incrementCharge(moving, cost, changer);
         const pos_comp = changer.state.getComponent<HexPosition>(
             moving, ComponentType.HEX_POSITION)!;
 

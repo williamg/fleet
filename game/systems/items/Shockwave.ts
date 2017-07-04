@@ -91,6 +91,7 @@ export class Shockwave extends System {
             const damage = {
                 attacker: entity,
                 defender: n,
+                item_index: event.index,
                 amount: items.shockwave.damage
             };
 
