@@ -6,3 +6,4 @@ let jsonfile = require("jsonfile");
 
 export const items: any = require("./data/items.json");
 export const constants: any = require("./data/constants.json");
+export const effects: any = require("./data/effects.json");

@@ -15,5 +15,14 @@
         "cooldown": 2,
         "damage": 20,
         "range": 1
+    },
+    "basic_shield": {
+        "name": "Basic Shield",
+        "description": "Absorbs 50 damage for the next 3 turns",
+        "icon": "",
+        "cost": 30,
+        "cooldown": 5,
+        "maximum": 50,
+        "duration": 3
     }
 }

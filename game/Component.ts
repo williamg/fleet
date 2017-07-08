@@ -19,9 +19,10 @@ export enum ComponentType {
     ITEMS,
     HEALTH,
     PILOT,
+    EFFECTS_INFO,
 
     /* Effects MUST be at the end */
-    EFFECT_SHIELDED,
+    EFFECT_SHIELDED = "shielded",
 };
 
 export const FIRST_EFFECT = ComponentType.EFFECT_SHIELDED;

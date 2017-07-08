@@ -9,12 +9,14 @@ import { System, SystemObserver, SystemRegistry, ItemEventData }
 import { IDPool } from "../../IDPool"
 import { GameState, GameStateChanger } from "../../GameState"
 import { Component, ComponentID, ComponentType } from "../../Component"
-import { GridSystem } from "../GridSystem"
 import { Vec2 } from "../../Math"
 import { Entity } from "../../Entity"
-import { CombatSystem } from "../CombatSystem"
 import { items } from "../../GameData"
 import { LOG, ASSERT } from "../../util"
+
+import { CombatSystem } from "../CombatSystem"
+import { GridSystem } from "../GridSystem"
+import { ItemSystem } from "../ItemSystem"
 
 import { HexPosition } from "../../components/HexPosition"
 import { Team, TeamID } from "../../components/Team"
@@ -44,7 +46,6 @@ export class Blaster extends System {
                 value: items.blaster.cooldown,
                 active: false,
                 remaining: 0,
-                wait_for: undefined
             },
             cost: items.blaster.cost,
             target: {
@@ -92,6 +93,10 @@ export class Blaster extends System {
         };
 
         combat_system.doDamage(damage, changer);
+
+        /* Start cooldown immediately */
+        this._systems.lookup(ItemSystem).startCooldown(
+            event.entity, event.index, event.changer);
     }
 
 }

@@ -11,6 +11,7 @@ import { Vec2 } from "../../../../game/Math"
 import { SystemRegistry } from "../../../../game/System"
 
 import { Deployable } from "../../../../game/components/Deployable"
+import { EffectsInfo } from "../../../../game/components/EffectsInfo"
 import { Moveable } from "../../../../game/components/Moveable"
 import { PowerSource, PowerType } from "../../../../game/components/PowerSource"
 import { TeamID } from "../../../../game/components/Team"
@@ -251,6 +252,7 @@ export class TargetWindow extends PIXI.Container {
         this.displayPower(this._targeted);
         this.displayMovement(this._targeted);
         this.displayPilot(this._targeted);
+        this.displayEffects(this._targeted);
 
         let i = 0;
         const items = this._game_state.getComponent<Items>(
@@ -488,6 +490,23 @@ export class TargetWindow extends PIXI.Container {
             this.accuracy.label.text = "---";
             this.evasion.label.text = "---";
             this.pilot.alpha = 0.2;
+        }
+    }
+    /**
+     * Display status effect info for this entity
+     *
+     * @param {Entity} entity to display
+     */
+    private displayEffects(entity: Entity): void {
+        const effect_info_comp = this._game_state.getComponent<EffectsInfo>(
+            entity, ComponentType.EFFECTS_INFO);
+
+        if (!effect_info_comp) {
+            return;
+        }
+
+        for (const info of effect_info_comp.data.effects) {
+            console.log(`${info.name}: ${info.status}`);
         }
     }
 

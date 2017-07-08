@@ -13,6 +13,8 @@ import { MoveableData } from "../components/Moveable"
 import { ItemsData } from "../components/Items"
 import { HealthData } from "../components/Health"
 import { PilotData } from "../components/Pilot"
+import { EffectsInfo } from "../components/EffectsInfo"
+import { ShieldedEffect } from "../components/effects/Shielded"
 import { ASSERT } from "../util"
 
 /**
@@ -88,6 +90,12 @@ export function componentToJSON(comp: Component): ComponentJSON {
         case ComponentType.PILOT:
             data = serializeComponentImpl(comp as ComponentImpl<PilotData>);
             break;
+        case ComponentType.EFFECTS_INFO:
+            data = serializeComponentImpl(comp as ComponentImpl<EffectsInfo>);
+            break;
+        case ComponentType.EFFECT_SHIELDED:
+            data = serializeComponentImpl(comp as ComponentImpl<ShieldedEffect>)
+            break;
         default:
             ASSERT(false);
     }
@@ -127,6 +135,10 @@ export function componentFromJSON(comp_json: ComponentJSON): Component {
             return deserializeComponentImpl<HealthData>(comp_json.data);
         case ComponentType.PILOT:
             return deserializeComponentImpl<PilotData>(comp_json.data);
+        case ComponentType.EFFECTS_INFO:
+            return deserializeComponentImpl<EffectsInfo>(comp_json.data);
+        case ComponentType.EFFECT_SHIELDED:
+            return deserializeComponentImpl<ShieldedEffect>(comp_json.data);
     }
 
     throw new Error("Unexhaustive component deserialization");

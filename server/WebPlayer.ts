@@ -23,10 +23,12 @@ import { Name, newName } from "../game/components/Name"
 import { Team, TeamID, newTeam, otherTeam } from "../game/components/Team"
 import { PowerSource, PowerType, newPowerSource }
     from "../game/components/PowerSource"
+import { newEffectsInfo } from "../game/components/EffectsInfo"
 import { newItems, Items } from "../game/components/Items"
 import { newHealth, Health } from "../game/components/Health"
 import { newPilot, Pilot } from "../game/components/Pilot"
 import { Shockwave } from "../game/systems/items/Shockwave"
+import { BasicShield } from "../game/systems/items/BasicShield"
 import { Blaster } from "../game/systems/items/Blaster"
 
 import { List } from "immutable"
@@ -67,10 +69,12 @@ export class WebPlayer extends Player {
                 current: max,
                 recharge: 10 + Math.floor(15 * Math.random()),
             });
+            const effects_info = newEffectsInfo(pool.component());
             const items = newItems(pool.component(), {
                 items: [
                     Shockwave.create(),
-                    Blaster.create()
+                    Blaster.create(),
+                    BasicShield.create()
                 ]
             });
             const max_health = 50 + Math.floor(50 * Math.random());
@@ -87,6 +91,7 @@ export class WebPlayer extends Player {
 
             state.makeChange(new AttachComponent(ent, name));
             state.makeChange(new AttachComponent(ent, deployable));
+            state.makeChange(new AttachComponent(ent, effects_info));
             state.makeChange(new AttachComponent(ent, team));
             state.makeChange(new AttachComponent(ent, power));
             state.makeChange(new AttachComponent(ent, items));

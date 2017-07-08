@@ -22,6 +22,8 @@ import { CombatSystem } from "../game/systems/CombatSystem"
 import { HealthSystem } from "../game/systems/HealthSystem"
 import { Shockwave } from "../game/systems/items/Shockwave"
 import { Blaster } from "../game/systems/items/Blaster"
+import { BasicShield } from "../game/systems/items/BasicShield"
+import { ShieldedSystem } from "../game/systems/effects/ShieldedSystem"
 
 
 import { newTeam, Team, TeamID } from "../game/components/Team"
@@ -107,6 +109,8 @@ export class Game {
         this._systems.register(HealthSystem);
         this._systems.register(Shockwave);
         this._systems.register(Blaster);
+        this._systems.register(ShieldedSystem);
+        this._systems.register(BasicShield);
 
         /* Initialize entities */
         const changer = new GameStateChanger(this._state, this._systems);

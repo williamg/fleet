@@ -199,23 +199,8 @@ export class ItemSystem extends System {
         const power_system = this._systems.lookup(PowerSystem);
         power_system.incrementCharge(entity, -item.cost, changer);
 
-        /* Then, handle cooldown */
+        /* Handle cooldown */
         item.cooldown.remaining = item.cooldown.value;
-
-        if (item.cooldown.wait_for != undefined) {
-            this._observer.items.addListener(item.cooldown.wait_for,
-                (item_event: ItemEvent) => {
-                /* Lookup the item again */
-                const items_comp = this._state.getComponent<Items>(
-                    entity, ComponentType.ITEMS)!;
-                const item = items_comp.data.items[index];
-                item.cooldown.active = true;
-                const new_items = items_comp.with(items_comp.data);
-                changer.makeChange(new UpdateComponent(new_items));
-            });
-        } else {
-            item.cooldown.active = true;
-        }
 
         /* Update state */
         const new_items = items_comp.with(items_comp.data);
@@ -230,5 +215,28 @@ export class ItemSystem extends System {
         });
 
         return true;
+    }
+    /**
+     * Start the cooldown for an item
+     *
+     * @param {Entity}           entity  Entity with item
+     * @param {number}           index   Index of item
+     * @param {GameStateChanger} changer Game state changer
+     */
+    public startCooldown(entity: Entity, index: number,
+                         changer: GameStateChanger): void {
+        const items_comp = changer.state.getComponent<Items>(
+            entity, ComponentType.ITEMS);
+
+        if (items_comp == undefined || items_comp.data.items.length <= index) {
+            return;
+        }
+
+        const item = items_comp.data.items[index];
+
+        item.cooldown.active = true;
+
+        const new_items = items_comp.with(items_comp.data);
+        changer.makeChange(new UpdateComponent(new_items));
     }
 }

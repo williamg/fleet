@@ -25,7 +25,6 @@ export type Item = {
         value: number,
         active: boolean,
         remaining: number,
-        wait_for: string | undefined
     },
     cost: number,
     target: TargetFilter | undefined,
